@@ -17,6 +17,21 @@ from app.services import snapshot_service
 # verdadeiras e não ajudam ninguém a decidir nada — não valem destaque sem odd pra comparar
 _INTERESTING_PROB_RANGE = (0.15, 0.85)
 
+# ~3 rodadas num campeonato de 20 times (10 jogos/rodada) — abaixo disso a força de
+# ataque/defesa de boa parte dos times ainda foi calibrada com poucos jogos da
+# temporada atual (elenco pode ter mudado no meio-tempo entre temporadas)
+LEAGUE_MATURITY_THRESHOLD_MATCHES = 30
+
+
+def _league_maturity_notice(league_id: int) -> str | None:
+    n = svc.get_league_maturity().get(league_id, 0)
+    if n >= LEAGUE_MATURITY_THRESHOLD_MATCHES:
+        return None
+    return (
+        f"Temporada ainda recente nesta liga — só {n} jogo(s) finalizado(s) até agora. "
+        "Estimativas tendem a ficar mais confiáveis conforme mais jogos rolam."
+    )
+
 
 def _is_stale(last_updated: datetime | None) -> bool:
     """Limiar em `config.DATA_STALE_THRESHOLD_HOURS` — configuração operacional
@@ -157,6 +172,7 @@ def get_header(match: dict, last_updated=_UNSET) -> MatchHeaderOut:
         referee=match.get("referee"), home_team_id=match["home_team_id"], home_team=match["home_team"],
         away_team_id=match["away_team_id"], away_team=match["away_team"],
         home_goals=match["home_goals"], away_goals=match["away_goals"], state=state,
+        league_maturity_notice=_league_maturity_notice(match["league_id"]),
     )
 
 

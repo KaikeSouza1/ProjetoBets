@@ -75,6 +75,7 @@ class MatchHeaderOut(BaseModel):
     home_goals: int | None = None
     away_goals: int | None = None
     state: DataState
+    league_maturity_notice: str | None = None
 
 
 class ReasonOut(BaseModel):
@@ -131,6 +132,10 @@ class PlayerPredictionOut(BaseModel):
     prob_assist: float
     prob_card: float
     confidence: str
+    odd: float | None = None
+    bookmaker_name: str | None = None
+    implied_probability: float | None = None
+    edge: float | None = None
 
 
 class TeamPlayersOut(BaseModel):

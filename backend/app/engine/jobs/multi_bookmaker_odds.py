@@ -17,6 +17,7 @@ import unicodedata
 
 from app.core import config, db
 from app.engine.integrations import odds_api_io
+from app.engine.models.players import ANYTIME_SCORER_BET_TYPE_ID, ANYTIME_SCORER_BET_TYPE_NAME
 
 BOOKMAKER_IDS = {"Bet365": 8, "Superbet": 9001}
 BOOKMAKERS = list(BOOKMAKER_IDS)
@@ -96,6 +97,13 @@ def _store_bookmaker(cur, name: str):
     )
 
 
+def _ensure_player_bet_type(cur):
+    cur.execute(
+        "INSERT INTO bet_types (id, name) VALUES (%s, %s) ON CONFLICT (id) DO NOTHING",
+        (ANYTIME_SCORER_BET_TYPE_ID, ANYTIME_SCORER_BET_TYPE_NAME),
+    )
+
+
 def _insert_snapshot(cur, fixture_id: int, bookmaker_name: str, bet_type_id: int) -> int:
     cur.execute(
         """INSERT INTO odds_snapshots (fixture_id, bookmaker_id, bet_type_id, source)
@@ -130,6 +138,12 @@ def _store_markets(cur, fixture_id: int, bookmaker_name: str, markets: list[dict
             snap = _insert_snapshot(cur, fixture_id, bookmaker_name, 8)
             _insert_value(cur, snap, "Yes", float(row["yes"]))
             _insert_value(cur, snap, "No", float(row["no"]))
+            saved += 1
+
+        elif name == "Anytime Goalscorer" and rows:
+            snap = _insert_snapshot(cur, fixture_id, bookmaker_name, ANYTIME_SCORER_BET_TYPE_ID)
+            for row in rows:
+                _insert_value(cur, snap, row["label"], float(row["over"]))
             saved += 1
 
         elif name in ("Totals", "Corners Totals", "Bookings Totals"):
@@ -185,6 +199,7 @@ def capture_multi_bookmaker_odds() -> dict:
                 with conn.cursor() as cur:
                     for bm in BOOKMAKERS:
                         _store_bookmaker(cur, bm)
+                    _ensure_player_bet_type(cur)
                     for event in results:
                         fixture_id = fixture_ids_by_event.get(event["id"])
                         if fixture_id is None:

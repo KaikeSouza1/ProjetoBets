@@ -26,6 +26,12 @@ export function MatchHeaderCard({ header }: { header: MatchHeader }) {
       <p className="mt-4 text-center text-xs text-muted-foreground">
         Árbitro: {header.referee ?? "não informado"} · Status: {header.status}
       </p>
+
+      {header.league_maturity_notice && (
+        <p className="mt-3 rounded-md bg-warning-bg px-3 py-2 text-center text-xs text-warning">
+          {header.league_maturity_notice}
+        </p>
+      )}
     </div>
   )
 }

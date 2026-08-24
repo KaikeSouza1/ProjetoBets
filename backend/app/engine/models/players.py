@@ -4,11 +4,58 @@ do modelo de gols) — nunca gera número para jogador lesionado/suspenso/fora d
 essa informação está disponível.
 """
 import math
+import re
+import unicodedata
 from dataclasses import dataclass
 
 from app.core import db
 
 MIN_APPEARANCES = 2  # abaixo disso não há amostra suficiente para uma taxa por jogo
+
+# bet_type_id sintético — API-Football não tem "marcar em qualquer momento" no espaço de
+# bet_types real; esse mercado só existe via multi_bookmaker_odds.py (Bet365, odds-api.io).
+# Definido aqui (camada de modelo) e importado por multi_bookmaker_odds.py (camada de job)
+# pra não inverter a direção normal de dependência (job -> engine, nunca o contrário).
+ANYTIME_SCORER_BET_TYPE_ID = 9101
+ANYTIME_SCORER_BET_TYPE_NAME = "Anytime Goalscorer"
+
+
+def _normalize_name(name: str) -> str:
+    ascii_name = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
+    return " ".join(re.findall(r"[a-z]+", ascii_name.lower()))
+
+
+def _fetch_anytime_scorer_odds(fixture_id: int) -> dict[str, tuple[float, str]]:
+    """Nome normalizado -> (melhor odd, casa) — só a mais recente de cada casa, maior
+    odd entre elas (mesma regra de `valuebet.fetch_latest_odds`). Sem par pra combinar
+    (é 'marcou sim/não', não over/under), então não reaproveita o mesmo helper."""
+    conn = db.get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                """WITH latest_per_bookmaker AS (
+                       SELECT DISTINCT ON (os.bookmaker_id) os.bookmaker_id, os.id AS snapshot_id
+                       FROM odds_snapshots os
+                       WHERE os.fixture_id = %s AND os.bet_type_id = %s
+                       ORDER BY os.bookmaker_id, os.captured_at DESC
+                   )
+                   SELECT ov.label, ov.odd, bm.name
+                   FROM latest_per_bookmaker lpb
+                   JOIN odds_values ov ON ov.snapshot_id = lpb.snapshot_id
+                   JOIN bookmakers bm ON bm.id = lpb.bookmaker_id""",
+                (fixture_id, ANYTIME_SCORER_BET_TYPE_ID),
+            )
+            rows = cur.fetchall()
+    finally:
+        conn.close()
+
+    best: dict[str, tuple[float, str]] = {}
+    for label, odd, bm_name in rows:
+        key = _normalize_name(label)
+        odd = float(odd)
+        if key not in best or odd > best[key][0]:
+            best[key] = (odd, bm_name)
+    return best
 
 
 @dataclass
@@ -21,6 +68,10 @@ class PlayerPrediction:
     prob_assist: float
     prob_card: float
     confidence: str
+    odd: float | None = None            # "marcar em qualquer momento" — só quando o nome bate com confiança
+    bookmaker_name: str | None = None
+    implied_probability: float | None = None
+    edge: float | None = None
 
 
 def _unavailable_player_ids(cur, fixture_id: int, team_id: int) -> set[int]:
@@ -101,6 +152,8 @@ def predict_team_players(fixture_id: int, team_id: int, opponent_defense_factor:
     finally:
         conn.close()
 
+    scorer_odds = _fetch_anytime_scorer_odds(fixture_id)
+
     predictions = []
     for player_id, name, n, avg_min, goals, assists, yellow, red, total_minutes in rows:
         if player_id in injured:
@@ -120,6 +173,14 @@ def predict_team_players(fixture_id: int, team_id: int, opponent_defense_factor:
         exp_cards = cards_per90 * (expected_minutes / 90) * referee_factor
 
         confidence = "média" if n >= 8 else "baixa"
+        prob_score = 1 - math.exp(-exp_goals)
+
+        odd = bookmaker_name = implied = edge_val = None
+        match = scorer_odds.get(_normalize_name(name))
+        if match:
+            odd, bookmaker_name = match
+            implied = 1.0 / odd
+            edge_val = prob_score - implied
 
         predictions.append(
             PlayerPrediction(
@@ -127,10 +188,14 @@ def predict_team_players(fixture_id: int, team_id: int, opponent_defense_factor:
                 name=name,
                 n_matches=n,
                 avg_minutes=float(avg_min),
-                prob_score=1 - math.exp(-exp_goals),
+                prob_score=prob_score,
                 prob_assist=1 - math.exp(-exp_assists),
                 prob_card=1 - math.exp(-exp_cards),
                 confidence=confidence,
+                odd=odd,
+                bookmaker_name=bookmaker_name,
+                implied_probability=implied,
+                edge=edge_val,
             )
         )
 

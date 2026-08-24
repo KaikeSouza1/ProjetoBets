@@ -68,6 +68,7 @@ export interface MatchHeader {
   home_goals: number | null
   away_goals: number | null
   state: DataState
+  league_maturity_notice: string | null
 }
 
 export interface MatchAnalysis {
@@ -120,6 +121,10 @@ export interface PlayerPrediction {
   prob_assist: number
   prob_card: number
   confidence: Confidence
+  odd: number | null
+  bookmaker_name: string | null
+  implied_probability: number | null
+  edge: number | null
 }
 
 export interface TeamPlayers {

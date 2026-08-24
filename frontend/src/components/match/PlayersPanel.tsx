@@ -1,5 +1,5 @@
 import { ConfidenceBadge } from "@/components/shared/ConfidenceBadge"
-import { formatPercent } from "@/lib/utils"
+import { formatOdd, formatPercent, formatSignedPercent } from "@/lib/utils"
 import type { MatchPlayers } from "@/types/api"
 
 function TeamPlayers({ teamName, side }: { teamName: string; side: MatchPlayers["home"] }) {
@@ -24,7 +24,17 @@ function TeamPlayers({ teamName, side }: { teamName: string; side: MatchPlayers[
               {side.players.map((p) => (
                 <tr key={p.player_id} className="border-t border-border">
                   <td className="px-3 py-2">{p.name}</td>
-                  <td className="px-3 py-2">{formatPercent(p.prob_score)}</td>
+                  <td className="px-3 py-2">
+                    {formatPercent(p.prob_score)}
+                    {p.odd !== null && (
+                      <span className="ml-1.5 text-xs text-muted-foreground">
+                        odd {formatOdd(p.odd)} ({p.bookmaker_name})
+                        <span className={`ml-1 font-semibold ${(p.edge ?? 0) >= 0 ? "text-positive" : "text-negative"}`}>
+                          {formatSignedPercent(p.edge)}
+                        </span>
+                      </span>
+                    )}
+                  </td>
                   <td className="px-3 py-2">{formatPercent(p.prob_assist)}</td>
                   <td className="px-3 py-2">{formatPercent(p.prob_card)}</td>
                   <td className="px-3 py-2"><ConfidenceBadge confidence={p.confidence} /></td>
