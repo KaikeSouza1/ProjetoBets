@@ -1,0 +1,93 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f7f7f8;
+  --foreground: #101114;
+  --card: #ffffff;
+  --card-foreground: #101114;
+  --border: #e5e5e9;
+  --muted: #f0f0f2;
+  --muted-foreground: #6b6d76;
+  --primary: #101114;
+  --primary-foreground: #ffffff;
+  --accent: #146c43;
+  --accent-foreground: #ffffff;
+  --positive: #1a7a4c;
+  --positive-bg: #e7f5ec;
+  --negative: #b3261e;
+  --negative-bg: #fbeaea;
+  --warning: #9a6700;
+  --warning-bg: #fdf3d8;
+  --radius: 0.65rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0d0e11;
+    --foreground: #eceef1;
+    --card: #15161b;
+    --card-foreground: #eceef1;
+    --border: #262830;
+    --muted: #1b1d23;
+    --muted-foreground: #9598a3;
+    --primary: #eceef1;
+    --primary-foreground: #101114;
+    --accent: #35a373;
+    --accent-foreground: #08110c;
+    --positive: #35c37e;
+    --positive-bg: #10281b;
+    --negative: #ef5a52;
+    --negative-bg: #2b1414;
+    --warning: #e0ac2b;
+    --warning-bg: #2b230f;
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-positive: var(--positive);
+  --color-positive-bg: var(--positive-bg);
+  --color-negative: var(--negative);
+  --color-negative-bg: var(--negative-bg);
+  --color-warning: var(--warning);
+  --color-warning-bg: var(--warning-bg);
+  --radius-md: var(--radius);
+}
+
+* {
+  border-color: var(--border);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: -apple-system, "Segoe UI", Inter, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 999px;
+}

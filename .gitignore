@@ -4,3 +4,8 @@ __pycache__/
 .venv/
 venv/
 streamlit_test.log
+
+# frontend
+frontend/node_modules/
+frontend/dist/
+frontend/node_modules/.tmp/

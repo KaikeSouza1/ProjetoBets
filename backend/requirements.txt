@@ -1,0 +1,9 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic>=2.8
+psycopg2-binary>=2.9
+python-dotenv>=1.0
+requests>=2.31
+apscheduler>=3.10
+numpy>=1.26
+scipy>=1.13
