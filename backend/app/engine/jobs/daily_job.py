@@ -5,7 +5,7 @@ import datetime
 import time
 
 from app.core import db
-from app.engine.jobs import fixture_detail, fixtures_daily, odds, season_form
+from app.engine.jobs import fixture_detail, fixtures_daily, multi_bookmaker_odds, odds, season_form
 
 FOOTBALL_DATA_PACING_SECONDS = 6.5  # limite da football-data.org é 10 requisições/minuto
 
@@ -56,6 +56,14 @@ def run_daily_sync():
         print(f"[daily_job] captura automática de odds: {result}")
     except Exception as exc:
         print(f"[daily_job] falhou captura automática de odds: {exc}")
+
+    # fonte adicional (Bet365 + Superbet via odds-api.io) — nunca substitui a de cima,
+    # só soma bookmaker quando o jogo casa; ver multi_bookmaker_odds.py
+    try:
+        result = multi_bookmaker_odds.capture_multi_bookmaker_odds()
+        print(f"[daily_job] captura multi-casa (Bet365/Superbet): {result}")
+    except Exception as exc:
+        print(f"[daily_job] falhou captura multi-casa: {exc}")
 
     for league_id in _target_league_ids():
         try:

@@ -34,8 +34,14 @@ export function MatchPage() {
       {analysis.error && <ErrorState message={analysis.error} onRetry={analysis.reload} />}
       {analysis.data && (
         <>
-          <BestOpportunityPanel analysis={analysis.data} />
-          <OtherOpportunities opportunities={analysis.data.other_opportunities} />
+          <BestOpportunityPanel
+            analysis={analysis.data}
+            match={{ fdMatchId: header.data.fd_match_id, homeTeam: header.data.home_team, awayTeam: header.data.away_team }}
+          />
+          <OtherOpportunities
+            opportunities={analysis.data.other_opportunities}
+            match={{ fdMatchId: header.data.fd_match_id, homeTeam: header.data.home_team, awayTeam: header.data.away_team }}
+          />
         </>
       )}
 

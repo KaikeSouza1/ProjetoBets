@@ -7,6 +7,7 @@ load_dotenv(Path(__file__).resolve().parents[3] / ".env")
 
 API_FOOTBALL_KEY = os.environ["API_FOOTBALL_KEY"]
 FOOTBALL_DATA_ORG_KEY = os.environ["FOOTBALL_DATA_ORG_KEY"]
+ODDS_API_IO_KEY = os.environ.get("ODDS_API_IO_KEY")
 
 DB_HOST = os.environ.get("DB_HOST", "localhost")
 DB_PORT = int(os.environ.get("DB_PORT", "5432"))

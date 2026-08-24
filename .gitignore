@@ -9,3 +9,6 @@ streamlit_test.log
 frontend/node_modules/
 frontend/dist/
 frontend/node_modules/.tmp/
+
+.vercel
+.env*

@@ -2,7 +2,9 @@ import { Suspense, lazy } from "react"
 import { Route, Routes } from "react-router-dom"
 
 import { AppLayout } from "@/layouts/AppLayout"
+import { BetSlip } from "@/components/betslip/BetSlip"
 import { LoadingState } from "@/components/shared/LoadingState"
+import { BetSlipProvider } from "@/context/BetSlipContext"
 import { DashboardPage } from "@/pages/DashboardPage"
 import { LeaguesPage } from "@/pages/LeaguesPage"
 import { MatchPage } from "@/pages/MatchPage"
@@ -14,21 +16,24 @@ const BacktestPage = lazy(() => import("@/pages/BacktestPage").then((m) => ({ de
 
 export default function App() {
   return (
-    <Routes>
-      <Route element={<AppLayout />}>
-        <Route index element={<DashboardPage />} />
-        <Route path="matches" element={<MatchesPage />} />
-        <Route path="matches/:id" element={<MatchPage />} />
-        <Route path="leagues" element={<LeaguesPage />} />
-        <Route
-          path="backtest"
-          element={
-            <Suspense fallback={<LoadingState label="Carregando..." />}>
-              <BacktestPage />
-            </Suspense>
-          }
-        />
-      </Route>
-    </Routes>
+    <BetSlipProvider>
+      <Routes>
+        <Route element={<AppLayout />}>
+          <Route index element={<DashboardPage />} />
+          <Route path="matches" element={<MatchesPage />} />
+          <Route path="matches/:id" element={<MatchPage />} />
+          <Route path="leagues" element={<LeaguesPage />} />
+          <Route
+            path="backtest"
+            element={
+              <Suspense fallback={<LoadingState label="Carregando..." />}>
+                <BacktestPage />
+              </Suspense>
+            }
+          />
+        </Route>
+      </Routes>
+      <BetSlip />
+    </BetSlipProvider>
   )
 }
