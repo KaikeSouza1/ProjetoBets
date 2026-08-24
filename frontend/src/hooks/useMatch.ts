@@ -1,6 +1,6 @@
 import { useCallback } from "react"
 
-import { api } from "@/services/api"
+import { api, type SortBy } from "@/services/api"
 
 import { useAsync } from "./useAsync"
 
@@ -8,8 +8,8 @@ export function useMatchHeader(id: number) {
   return useAsync(useCallback(() => api.match(id), [id]), [id])
 }
 
-export function useMatchAnalysis(id: number) {
-  return useAsync(useCallback(() => api.matchAnalysis(id), [id]), [id])
+export function useMatchAnalysis(id: number, sortBy: SortBy = "valor") {
+  return useAsync(useCallback(() => api.matchAnalysis(id, sortBy), [id, sortBy]), [id, sortBy])
 }
 
 export function useMatchMarkets(id: number) {

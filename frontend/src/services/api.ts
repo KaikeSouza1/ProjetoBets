@@ -32,11 +32,14 @@ async function request<T>(
   return res.json()
 }
 
+export type SortBy = "valor" | "probabilidade"
+
 export interface DashboardFilters {
   days_ahead?: number
   league_id?: number
   min_edge?: number
   min_confidence?: string
+  sort_by?: SortBy
 }
 
 export const api = {
@@ -46,7 +49,7 @@ export const api = {
   matches: (params: { from?: string; to?: string; league_id?: number } = {}) =>
     request<MatchSummary[]>("/matches", params),
   match: (id: number) => request<MatchHeader>(`/matches/${id}`),
-  matchAnalysis: (id: number) => request<MatchAnalysis>(`/matches/${id}/analysis`),
+  matchAnalysis: (id: number, sortBy?: SortBy) => request<MatchAnalysis>(`/matches/${id}/analysis`, { sort_by: sortBy }),
   matchMarkets: (id: number) => request<MatchMarkets>(`/matches/${id}/markets`),
   matchForm: (id: number) => request<MatchForm>(`/matches/${id}/form`),
   matchPlayers: (id: number) => request<MatchPlayers>(`/matches/${id}/players`),

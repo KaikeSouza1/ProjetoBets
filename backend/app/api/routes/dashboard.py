@@ -12,7 +12,8 @@ def get_dashboard(
     league_id: int | None = None,
     min_edge: float | None = Query(None, description="Edge mínimo, ex.: 0.05 para 5%"),
     min_confidence: str | None = Query(None, pattern="^(baixa|média|alta)$"),
+    sort_by: str = Query("valor", pattern="^(valor|probabilidade)$"),
 ):
     return dashboard_service.build_dashboard(
-        days_ahead=days_ahead, league_id=league_id, min_edge=min_edge, min_confidence=min_confidence,
+        days_ahead=days_ahead, league_id=league_id, min_edge=min_edge, min_confidence=min_confidence, sort_by=sort_by,
     )

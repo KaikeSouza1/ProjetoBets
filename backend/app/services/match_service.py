@@ -78,8 +78,21 @@ def _families_and_state(match: dict, last_updated: datetime | None) -> tuple[dic
     return families, _resolve_state(match["fixture_id"], families, last_updated)
 
 
-def _best_and_others(families: dict) -> tuple[OpportunityOut | None, list[OpportunityOut]]:
+def _best_and_others(families: dict, sort_by: str = "valor") -> tuple[OpportunityOut | None, list[OpportunityOut]]:
+    """`sort_by="valor"` (padrão): rankeia por opportunity_score (edge × confiança ×
+    qualidade) — só usa probabilidade crua quando não há odd pra calcular edge nenhum.
+    `sort_by="probabilidade"`: ignora edge de propósito — mostra o que tem MAIOR chance
+    de acontecer, com ou sem odd. Não é 'melhor aposta', é 'resultado mais provável';
+    o usuário decide qual pergunta quer responder."""
     all_opps = [o for data in families.values() if not data["error"] for o in data["opportunities"]]
+
+    if sort_by == "probabilidade":
+        interesting = [o for o in all_opps if _INTERESTING_PROB_RANGE[0] <= o.probability <= _INTERESTING_PROB_RANGE[1]]
+        pool = sorted(interesting or all_opps, key=lambda o: o.probability, reverse=True)
+        if not pool:
+            return None, []
+        return _map_opportunity(pool[0]), [_map_opportunity(o) for o in pool[1:]]
+
     ranked = sorted((o for o in all_opps if o.opportunity_score is not None), key=lambda o: o.opportunity_score, reverse=True)
     if ranked:
         best, rest = ranked[0], ranked[1:]
@@ -147,9 +160,9 @@ def get_header(match: dict, last_updated=_UNSET) -> MatchHeaderOut:
     )
 
 
-def get_summary(match: dict, last_updated=_UNSET) -> MatchSummaryOut:
+def get_summary(match: dict, last_updated=_UNSET, sort_by: str = "valor") -> MatchSummaryOut:
     families, state = _families_and_state(match, _resolve_last_updated(last_updated))
-    best, _others = _best_and_others(families)
+    best, _others = _best_and_others(families, sort_by)
     return MatchSummaryOut(
         fd_match_id=match["fd_match_id"], fixture_id=match["fixture_id"], date=match["date"], status=match["status"],
         league_id=match["league_id"], league_name=match["league_name"], league_country=match.get("league_country"),
@@ -177,12 +190,14 @@ def _stale_message() -> str:
     )
 
 
-def get_analysis(match: dict, last_updated=_UNSET, source: str = snapshot_service.MANUAL_VIEW) -> MatchAnalysisOut:
+def get_analysis(
+    match: dict, last_updated=_UNSET, source: str = snapshot_service.MANUAL_VIEW, sort_by: str = "valor",
+) -> MatchAnalysisOut:
     """`source` default é MANUAL_VIEW (alguém abriu esta partida pela API) —
     `snapshot_service.capture_snapshots_for_upcoming_matches` passa PERIODIC_JOB pra
     marcar snapshots de uma captura sistemática. Nunca misture os dois sem o rótulo."""
     families, state = _families_and_state(match, _resolve_last_updated(last_updated))
-    best, others = _best_and_others(families)
+    best, others = _best_and_others(families, sort_by)
 
     home_form = svc.get_recent_form(match["home_team_id"], limit=10)
     away_form = svc.get_recent_form(match["away_team_id"], limit=10)

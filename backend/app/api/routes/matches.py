@@ -22,6 +22,7 @@ def list_matches(
     from_: date | None = Query(None, alias="from"),
     to: date | None = None,
     league_id: int | None = None,
+    sort_by: str = Query("valor", pattern="^(valor|probabilidade)$"),
 ):
     days_ahead = 14
     if to:
@@ -34,7 +35,7 @@ def list_matches(
     if to:
         matches = [m for m in matches if m["date"].date() <= to]
     last_updated = svc.get_last_updated()  # 1x pra toda a lista, não por partida
-    return [match_service.get_summary(m, last_updated=last_updated) for m in matches]
+    return [match_service.get_summary(m, last_updated=last_updated, sort_by=sort_by) for m in matches]
 
 
 @router.get("/{match_id}", response_model=MatchHeaderOut)
@@ -43,8 +44,8 @@ def get_match(match_id: int):
 
 
 @router.get("/{match_id}/analysis", response_model=MatchAnalysisOut)
-def get_match_analysis(match_id: int):
-    return match_service.get_analysis(_get_match_or_404(match_id))
+def get_match_analysis(match_id: int, sort_by: str = Query("valor", pattern="^(valor|probabilidade)$")):
+    return match_service.get_analysis(_get_match_or_404(match_id), sort_by=sort_by)
 
 
 @router.get("/{match_id}/markets", response_model=MatchMarketsOut)

@@ -1,10 +1,12 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import type { SortBy } from "@/services/api"
 import type { League } from "@/types/api"
 
 export interface Filters {
   leagueId: number | undefined
   minConfidence: string | undefined
   minEdge: number | undefined
+  sortBy: SortBy
 }
 
 export function DashboardFilters({
@@ -12,6 +14,14 @@ export function DashboardFilters({
 }: { leagues: League[]; filters: Filters; onChange: (f: Filters) => void }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
+      <Select value={filters.sortBy} onValueChange={(v) => onChange({ ...filters, sortBy: v as SortBy })}>
+        <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
+        <SelectContent>
+          <SelectItem value="valor">Valor (edge vs. odd)</SelectItem>
+          <SelectItem value="probabilidade">Mais provável de acontecer</SelectItem>
+        </SelectContent>
+      </Select>
+
       <Select
         value={filters.leagueId ? String(filters.leagueId) : "all"}
         onValueChange={(v) => onChange({ ...filters, leagueId: v === "all" ? undefined : Number(v) })}

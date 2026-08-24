@@ -10,13 +10,16 @@ import { LoadingState } from "@/components/shared/LoadingState"
 import { useDashboard, useLeagues } from "@/hooks/useDashboard"
 
 export function DashboardPage() {
-  const [filters, setFilters] = useState<Filters>({ leagueId: undefined, minConfidence: undefined, minEdge: undefined })
+  const [filters, setFilters] = useState<Filters>({
+    leagueId: undefined, minConfidence: undefined, minEdge: undefined, sortBy: "valor",
+  })
   const leagues = useLeagues()
   const dashboard = useDashboard({
     days_ahead: 14,
     league_id: filters.leagueId,
     min_confidence: filters.minConfidence,
     min_edge: filters.minEdge,
+    sort_by: filters.sortBy,
   })
 
   return (

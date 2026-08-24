@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { useParams } from "react-router-dom"
 
 import { BestOpportunityPanel } from "@/components/match/BestOpportunityPanel"
@@ -7,17 +8,20 @@ import { OtherOpportunities } from "@/components/match/OtherOpportunities"
 import { PlayersPanel } from "@/components/match/PlayersPanel"
 import { StatComparison } from "@/components/match/StatComparison"
 import { TeamForm } from "@/components/match/TeamForm"
+import { Button } from "@/components/ui/button"
 import { ErrorState } from "@/components/shared/ErrorState"
 import { LoadingState } from "@/components/shared/LoadingState"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useMatchAnalysis, useMatchForm, useMatchHeader, useMatchMarkets, useMatchPlayers } from "@/hooks/useMatch"
+import type { SortBy } from "@/services/api"
 
 export function MatchPage() {
   const { id } = useParams<{ id: string }>()
   const matchId = Number(id)
+  const [sortBy, setSortBy] = useState<SortBy>("valor")
 
   const header = useMatchHeader(matchId)
-  const analysis = useMatchAnalysis(matchId)
+  const analysis = useMatchAnalysis(matchId, sortBy)
   const markets = useMatchMarkets(matchId)
   const form = useMatchForm(matchId)
   const players = useMatchPlayers(matchId)
@@ -29,6 +33,16 @@ export function MatchPage() {
   return (
     <div className="flex flex-col gap-6">
       <MatchHeaderCard header={header.data} />
+
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-muted-foreground">Mostrar:</span>
+        <Button size="sm" variant={sortBy === "valor" ? "default" : "outline"} onClick={() => setSortBy("valor")}>
+          Valor (edge vs. odd)
+        </Button>
+        <Button size="sm" variant={sortBy === "probabilidade" ? "default" : "outline"} onClick={() => setSortBy("probabilidade")}>
+          Mais provável
+        </Button>
+      </div>
 
       {analysis.loading && <LoadingState label="Calculando oportunidades..." />}
       {analysis.error && <ErrorState message={analysis.error} onRetry={analysis.reload} />}
