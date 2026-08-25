@@ -18,7 +18,7 @@ artificialmente com informação que só existiu depois da previsão real ter si
 from datetime import timedelta
 
 from app.core import db
-from app.engine.backtest.backtest import actual_outcomes_from_score
+from app.engine.backtest.backtest import actual_outcomes_from_score, resolve_actual
 from app.engine.backtest.metrics import GradedBet, grade_bet
 from app.engine.models.poisson_goals import MODEL_VERSION, compute_strengths_from_matches, predict_fixture
 from app.engine.valuebet import valuebet
@@ -100,18 +100,6 @@ def _fetch_training_matches_before(fd_code: str, cutoff) -> list[tuple]:
         conn.close()
 
 
-def _resolve_actual(market_key: str, actuals: dict[str, bool]) -> bool | None:
-    if market_key in actuals:
-        return actuals[market_key]
-    home_win, draw, away_win = actuals["home_win"], actuals["draw"], actuals["away_win"]
-    derived = {
-        "double_chance_1x": home_win or draw, "double_chance_12": home_win or away_win,
-        "double_chance_x2": draw or away_win, "btts_no": not actuals["btts_yes"],
-        "under_2_5": not actuals["over_2_5"],
-    }
-    return derived.get(market_key)
-
-
 def evaluate_historical_bets(league_id: int | None = None) -> list[EvaluatedBet]:
     """Ponto de entrada. Devolve uma lista (pode ser vazia — e HOJE, no banco real
     deste projeto, É vazia: nenhuma partida finalizada tem odd capturada antes do apito
@@ -142,7 +130,7 @@ def evaluate_historical_bets(league_id: int | None = None) -> list[EvaluatedBet]
         for opp in opportunities:
             if opp.market_key not in EVALUABLE_MARKETS or opp.odd is None:
                 continue
-            actual = _resolve_actual(opp.market_key, actuals)
+            actual = resolve_actual(opp.market_key, actuals)
             if actual is None:
                 continue
 

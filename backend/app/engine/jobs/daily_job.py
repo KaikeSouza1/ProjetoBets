@@ -6,6 +6,7 @@ import time
 
 from app.core import db
 from app.engine.jobs import fixture_detail, fixtures_daily, multi_bookmaker_odds, odds, season_form
+from app.services import result_tracking
 
 FOOTBALL_DATA_PACING_SECONDS = 6.5  # limite da football-data.org é 10 requisições/minuto
 # API-Football free tier: 10 req/minuto (confirmado em api-football.com/news/post/how-ratelimit-works,
@@ -95,5 +96,12 @@ def run_daily_sync():
             except Exception as exc:
                 print(f"[daily_job] falhou {fetch.__name__} fixture {fixture_id}: {exc}")
             time.sleep(API_FOOTBALL_PACING_SECONDS)
+
+    # fecha o ciclo de auditoria: previsão que já tem resultado real disponível vira
+    # WIN/LOSS agora (só mercados de gols — ver result_tracking.py)
+    try:
+        result_tracking.resolve_pending_snapshots()
+    except Exception as exc:
+        print(f"[daily_job] falhou result_tracking: {exc}")
 
     print(f"[daily_job] sincronização diária concluída — {today.isoformat()}")

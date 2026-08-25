@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 from app.core import db
 from app.engine.backtest.metrics import brier_score_multiclass
-from app.engine.models.poisson_goals import MODEL_VERSION, compute_strengths_from_matches, predict_fixture
+from app.engine.models.poisson_goals import GOAL_LINES, MODEL_VERSION, compute_strengths_from_matches, predict_fixture
 
 MARKETS_TO_SCORE = ["home_win", "draw", "away_win", "btts_yes", "over_2_5"]
 
@@ -25,13 +25,41 @@ MULTICLASS_1X2_KEY = "1x2_multiclass_brier"
 
 def actual_outcomes_from_score(home_goals: int, away_goals: int) -> dict[str, bool]:
     total = home_goals + away_goals
-    return {
+    outcomes = {
         "home_win": home_goals > away_goals,
         "draw": home_goals == away_goals,
         "away_win": home_goals < away_goals,
         "btts_yes": home_goals >= 1 and away_goals >= 1,
-        "over_2_5": total > 2.5,
     }
+    # todas as linhas que o modelo de gols realmente oferece (poisson_goals.GOAL_LINES) —
+    # antes só a linha 2.5 tinha resolução real; achado na auditoria de result_tracking.py:
+    # a maioria das previsões salvas (over/under 0.5/1.5/3.5/4.5) nunca virava WIN/LOSS
+    # porque não existia resultado real calculado pra elas, mesmo sendo trivial derivar
+    for line in GOAL_LINES:
+        key = str(line).replace(".", "_")
+        outcomes[f"over_{key}"] = total > line
+    return outcomes
+
+
+def resolve_actual(market_key: str, actuals: dict[str, bool]) -> bool | None:
+    """`market_key` -> resultado real (True/False), derivado de `actual_outcomes_from_score`.
+    None quando o mercado não é de gols (escanteio/cartão/jogador — resolvido em outro
+    lugar), é um mercado com estado de PUSH/VOID que bool não representa (draw_no_bet —
+    nunca inventado como True/False numa partida empatada), ou não é derivável dos
+    resultados base. Compartilhado entre `historical_eval.py` (backtest) e
+    `result_tracking.py` (previsão em produção) — mesma regra, um lugar só."""
+    if market_key in actuals:
+        return actuals[market_key]
+    home_win, draw, away_win = actuals["home_win"], actuals["draw"], actuals["away_win"]
+    derived = {
+        "double_chance_1x": home_win or draw, "double_chance_12": home_win or away_win,
+        "double_chance_x2": draw or away_win, "btts_no": not actuals["btts_yes"],
+    }
+    if market_key.startswith("under_"):
+        over_key = market_key.replace("under_", "over_", 1)
+        if over_key in actuals:
+            derived[market_key] = not actuals[over_key]
+    return derived.get(market_key)
 
 
 def _fetch_ordered_matches(league_id: int) -> tuple[str, list[tuple]]:

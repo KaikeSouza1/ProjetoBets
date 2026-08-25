@@ -424,6 +424,12 @@ CREATE INDEX IF NOT EXISTS idx_prediction_snapshots_source ON prediction_snapsho
 -- — sem isso, reprocessar o modelo não tinha como provar que uma previsão antiga usava a
 -- fórmula de então e não a de hoje. NULL só em linha gravada antes desta coluna existir.
 ALTER TABLE prediction_snapshots ADD COLUMN IF NOT EXISTS model_version TEXT;
+-- fecha o ciclo "toda previsão eventualmente vira WIN/LOSS" (auditoria item 17) — só
+-- pra mercados de gols por enquanto (única família com resolução de resultado real
+-- implementada; escanteio/cartão/jogador ainda não têm — ver result_tracking.py).
+-- NULL = ainda não resolvido (jogo não terminou, ou mercado sem resolução ainda).
+ALTER TABLE prediction_snapshots ADD COLUMN IF NOT EXISTS actual_outcome BOOLEAN;
+ALTER TABLE prediction_snapshots ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMPTZ;
 
 -- ==================== landing / captação (produto WhatsApp) ====================
 
