@@ -5,7 +5,7 @@ pela fila, responde direto via WhatsAppProvider."""
 import datetime
 
 from app.core import db
-from app.services.opportunity_notifications import PLAN_LIMITS, eligible_opportunities, format_opportunity_message
+from app.services.opportunity_notifications import PLAN_LIMITS, eligible_opportunities, format_ticket_message
 
 NO_OPPORTUNITY_MESSAGE = "Sem oportunidade com confiança suficiente pra hoje. Tenta de novo mais tarde."
 
@@ -37,4 +37,4 @@ def handle_command(from_phone: str, text: str, opportunities: list | None = None
     picks = available[:limit]
     if not picks:
         return NO_OPPORTUNITY_MESSAGE
-    return "\n\n".join(format_opportunity_message(o) for o in picks)
+    return format_ticket_message(picks)

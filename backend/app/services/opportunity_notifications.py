@@ -58,21 +58,44 @@ def eligible_opportunities(reference_date: datetime.date) -> list:
     return out
 
 
-def format_opportunity_message(summary) -> str:
-    best = summary.best_opportunity
-    return (
-        f"{summary.home_team} x {summary.away_team} ({summary.league_name})\n"
-        f"{best.label}: odd {best.odd:.2f}" + (f" ({best.bookmaker_name})" if best.bookmaker_name else "") + "\n"
-        f"Probabilidade do modelo: {best.probability * 100:.0f}%"
-        + (f" | edge {best.edge * 100:.1f}%" if best.edge is not None else "")
-    )
+BRAND_NAME = "GreenOdds"
+
+
+def format_ticket_message(opportunities: list) -> str:
+    """Bilhete formatado — nunca mostra a odd real (o valor do produto é o palpite e a
+    probabilidade, não a cotação; a odd muda a cada minuto e o usuário confere no
+    próprio site da casa antes de apostar). Mesmo layout pra 1 palpite ou pra múltipla
+    — só o título e o rodapé de probabilidade combinada mudam."""
+    is_multiple = len(opportunities) > 1
+    header = f"🎯 {'BILHETE MÚLTIPLA' if is_multiple else 'PALPITE DO DIA'} — {BRAND_NAME}"
+
+    lines = [header, ""]
+    combined_probability = 1.0
+    for i, summary in enumerate(opportunities, start=1):
+        best = summary.best_opportunity
+        combined_probability *= best.probability
+        lines.append(
+            f"{i}. {summary.home_team} x {summary.away_team} | {best.label} ({best.probability * 100:.0f}% prob)"
+        )
+
+    if is_multiple:
+        lines.append("")
+        lines.append(f"📊 Probabilidade Combinada: {combined_probability * 100:.1f}%")
+
+    lines.append("")
+    lines.append("⚠️ Aposte com responsabilidade.")
+    return "\n".join(lines)
 
 
 def enqueue_daily_opportunities(reference_date: datetime.date | None = None, opportunities: list | None = None) -> dict:
     """`opportunities` normalmente vem de `eligible_opportunities` (produção) —
     parâmetro existe pra teste injetar oportunidades reais (MatchSummaryOut/
     OpportunityOut de verdade) sem precisar montar fixture+odds+modelo completos
-    só pra popular o dashboard (mesmo padrão do `provider` em queue.process_pending)."""
+    só pra popular o dashboard (mesmo padrão do `provider` em queue.process_pending).
+
+    Um bilhete só por lead por dia (não um registro de fila por palpite) — o produto é
+    o bilhete inteiro, não picks soltos; `idempotency_key` não inclui mais fixture/mercado
+    porque não faz sentido reenviar metade de um bilhete já mandado."""
     reference_date = reference_date or datetime.date.today()
     opportunities = eligible_opportunities(reference_date) if opportunities is None else opportunities
     leads = _fetch_active_leads()
@@ -84,13 +107,12 @@ def enqueue_daily_opportunities(reference_date: datetime.date | None = None, opp
         if not picks:
             skipped_no_opportunity += 1
             continue
-        for summary in picks:
-            idempotency_key = f"lead:{lead_id}:{reference_date.isoformat()}:{summary.fixture_id}:{summary.best_opportunity.market_key}"
-            queued = notification_queue.enqueue(phone, format_opportunity_message(summary), idempotency_key)
-            if queued:
-                enqueued += 1
-            else:
-                skipped_duplicate += 1
+        idempotency_key = f"lead:{lead_id}:{reference_date.isoformat()}"
+        queued = notification_queue.enqueue(phone, format_ticket_message(picks), idempotency_key)
+        if queued:
+            enqueued += 1
+        else:
+            skipped_duplicate += 1
 
     result = {
         "enqueued": enqueued,
@@ -101,9 +123,3 @@ def enqueue_daily_opportunities(reference_date: datetime.date | None = None, opp
     }
     print(f"[opportunity_notifications] {result}")
     return result
-
-
-# Próximo degrau, deliberadamente fora de escopo agora (sem valor até o envio real
-# existir): plano PRO inclui "1 múltipla" (combinação de seleções com odd combinada),
-# que exige formatar e validar uma aposta composta — não fabricado aqui, cada lead PRO
-# hoje recebe até 3 oportunidades simples, não a múltipla anunciada no site.

@@ -63,24 +63,32 @@ def leads_and_queue():
         conn.close()
 
 
-def test_gratis_lead_gets_one_pro_lead_gets_up_to_three(leads_and_queue):
+def test_gratis_lead_gets_one_pick_pro_lead_gets_up_to_three_in_one_ticket(leads_and_queue):
     opportunities = [
         _make_opportunity(999991001, "home_win", 0.09),
         _make_opportunity(999991002, "btts_yes", 0.07),
         _make_opportunity(999991003, "over_2_5", 0.05),
         _make_opportunity(999991004, "away_win", 0.03),  # 4ª — nenhum plano hoje inclui
     ]
-    # n_leads/enqueued totais não são fixáveis aqui — a tabela tem leads reais de
-    # produção além dos 2 de teste; a asserção que importa é por telefone, abaixo.
     svc.enqueue_daily_opportunities(datetime.date.today(), opportunities=opportunities)
 
     conn = db.get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT to_phone FROM notification_queue WHERE to_phone = %s", (LEAD_GRATIS_PHONE,))
-            assert len(cur.fetchall()) == 1
-            cur.execute("SELECT to_phone FROM notification_queue WHERE to_phone = %s", (LEAD_PRO_PHONE,))
-            assert len(cur.fetchall()) == 3
+            # 1 bilhete só por lead (não 1 registro por palpite) — o número de picks
+            # dentro do texto que muda por plano, não a quantidade de linhas na fila
+            cur.execute("SELECT message FROM notification_queue WHERE to_phone = %s", (LEAD_GRATIS_PHONE,))
+            rows = cur.fetchall()
+            assert len(rows) == 1
+            assert "PALPITE DO DIA" in rows[0][0]
+            assert rows[0][0].count("Grêmio x Bahia") == 1
+
+            cur.execute("SELECT message FROM notification_queue WHERE to_phone = %s", (LEAD_PRO_PHONE,))
+            rows = cur.fetchall()
+            assert len(rows) == 1
+            assert "BILHETE MÚLTIPLA" in rows[0][0]
+            assert "Probabilidade Combinada" in rows[0][0]
+            assert rows[0][0].count("Grêmio x Bahia") == 3
     finally:
         conn.close()
 
