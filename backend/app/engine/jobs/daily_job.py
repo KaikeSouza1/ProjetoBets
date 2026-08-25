@@ -6,7 +6,7 @@ import time
 
 from app.core import db
 from app.engine.jobs import fixture_detail, fixtures_daily, multi_bookmaker_odds, odds, season_form
-from app.services import result_tracking
+from app.services import opportunity_notifications, result_tracking
 
 FOOTBALL_DATA_PACING_SECONDS = 6.5  # limite da football-data.org é 10 requisições/minuto
 # API-Football free tier: 10 req/minuto (confirmado em api-football.com/news/post/how-ratelimit-works,
@@ -103,5 +103,13 @@ def run_daily_sync():
         result_tracking.resolve_pending_snapshots()
     except Exception as exc:
         print(f"[daily_job] falhou result_tracking: {exc}")
+
+    # Opportunity Engine -> fila: enfileira as melhores oportunidades do dia pros leads
+    # cadastrados. Só enfileira — o envio real depende do WhatsAppProvider configurado
+    # (console por padrão; nada sai de verdade sem EVOLUTION_API_URL/KEY real).
+    try:
+        opportunity_notifications.enqueue_daily_opportunities()
+    except Exception as exc:
+        print(f"[daily_job] falhou opportunity_notifications: {exc}")
 
     print(f"[daily_job] sincronização diária concluída — {today.isoformat()}")
