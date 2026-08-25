@@ -8,6 +8,12 @@ from app.core import db
 from app.engine.jobs import fixture_detail, fixtures_daily, multi_bookmaker_odds, odds, season_form
 
 FOOTBALL_DATA_PACING_SECONDS = 6.5  # limite da football-data.org é 10 requisições/minuto
+# API-Football free tier: 10 req/minuto (confirmado em api-football.com/news/post/how-ratelimit-works,
+# 25/08/2026) — achado real na auditoria: o backfill abaixo disparava statistics+player_stats+injuries
+# de N partidas em sequência SEM pausa nenhuma, estourando o limite por minuto sempre que
+# tinha mais de ~3 partidas pra processar (confirmado via /api/status: 130 erros em 240
+# chamadas nas últimas 24h). 6.5s dá a mesma folga que já existia pro football-data.org.
+API_FOOTBALL_PACING_SECONDS = 6.5
 
 
 def _target_league_ids() -> list[int]:
@@ -47,6 +53,7 @@ def run_daily_sync():
             fixtures_daily.sync_fixtures_for_date(day)
         except Exception as exc:
             print(f"[daily_job] falhou fixtures_daily {day}: {exc}")
+        time.sleep(API_FOOTBALL_PACING_SECONDS)
 
     # captura automática de odds pré-jogo — sem isso, o backtest com odds reais
     # (engine/backtest/historical_eval.py) nunca vai ter partida elegível pra avaliar,
@@ -78,12 +85,15 @@ def run_daily_sync():
         time.sleep(FOOTBALL_DATA_PACING_SECONDS)
 
     # backfill lento: estatística/jogador/lesão das partidas de ontem que já terminaram e
-    # ainda não têm detalhe salvo — é assim que os modelos de escanteio/cartão/jogador crescem
+    # ainda não têm detalhe salvo — é assim que os modelos de escanteio/cartão/jogador crescem.
+    # Pausa entre CADA chamada (não só entre partidas) — são 3 chamadas por partida, e o
+    # limite de 10/min da API-Football conta a chamada, não a partida.
     for fixture_id in _yesterday_finished_target_fixtures():
         for fetch in (fixture_detail.fetch_statistics, fixture_detail.fetch_player_stats, fixture_detail.fetch_injuries):
             try:
                 fetch(fixture_id)
             except Exception as exc:
                 print(f"[daily_job] falhou {fetch.__name__} fixture {fixture_id}: {exc}")
+            time.sleep(API_FOOTBALL_PACING_SECONDS)
 
     print(f"[daily_job] sincronização diária concluída — {today.isoformat()}")

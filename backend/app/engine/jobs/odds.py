@@ -6,12 +6,18 @@ construir o par (odd pré-jogo, resultado real) que o backtest com odds reais pr
 
 Fetch/normalização vêm de `providers.api_football_odds` — este módulo só orquestra
 (seleciona partida, chama o provider, grava). Não importa `api_football` diretamente."""
+import time
+
 from app.core import config, db
 from app.engine.integrations import api_football
 from app.engine.providers import api_football_odds
 from app.engine.providers.odds_storage import store_markets
 
 DEFAULT_BOOKMAKER_ID = api_football_odds.DEFAULT_BOOKMAKER_ID
+
+# API-Football free tier: 10 req/minuto — ver daily_job.API_FOOTBALL_PACING_SECONDS
+# pro achado completo (auditoria 25/08/2026, /api/status mostrou >50% de erro 24h)
+API_FOOTBALL_PACING_SECONDS = 6.5
 
 
 def fetch_and_store_odds(fixture_id: int, bookmaker_id: int = DEFAULT_BOOKMAKER_ID) -> int:
@@ -70,9 +76,11 @@ def capture_odds_for_upcoming_fixtures(
     ver `daily_job.py` pro orçamento completo."""
     fixture_ids = _select_fixtures_for_capture(max_fixtures, cooldown_hours)
     total_saved = 0
-    for fixture_id in fixture_ids:
+    for i, fixture_id in enumerate(fixture_ids):
         try:
             total_saved += fetch_and_store_odds(fixture_id)
         except api_football.ApiFootballError as exc:
             print(f"[odds] captura automática falhou pra fixture {fixture_id}: {exc}")
+        if i < len(fixture_ids) - 1:
+            time.sleep(API_FOOTBALL_PACING_SECONDS)
     return {"fixtures_attempted": len(fixture_ids), "markets_saved": total_saved}
