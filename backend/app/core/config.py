@@ -27,3 +27,11 @@ DATA_STALE_THRESHOLD_HOURS = int(os.environ.get("DATA_STALE_THRESHOLD_HOURS", "4
 # Com scheduler a cada 4h (6 runs/dia), o padrão abaixo soma até 30 req/dia extras.
 ODDS_CAPTURE_MAX_FIXTURES_PER_RUN = int(os.environ.get("ODDS_CAPTURE_MAX_FIXTURES_PER_RUN", "5"))
 ODDS_CAPTURE_COOLDOWN_HOURS = int(os.environ.get("ODDS_CAPTURE_COOLDOWN_HOURS", "3"))
+
+# Evolution API (WhatsApp não-oficial, self-hosted) — opcional de propósito. Sem os 3
+# configurados, `notifications.provider.get_provider()` cai pro ConsoleWhatsAppProvider
+# (só loga, nunca manda mensagem de verdade) — nunca falha por falta de credencial,
+# só não envia nada real até você configurar isso.
+EVOLUTION_API_URL = os.environ.get("EVOLUTION_API_URL")
+EVOLUTION_API_KEY = os.environ.get("EVOLUTION_API_KEY")
+EVOLUTION_API_INSTANCE = os.environ.get("EVOLUTION_API_INSTANCE")

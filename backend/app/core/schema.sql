@@ -435,3 +435,21 @@ CREATE TABLE IF NOT EXISTS whatsapp_leads (
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_whatsapp_leads_phone ON whatsapp_leads (phone);
+
+-- fila de notificação — a Oportunidade nunca chama o provedor de WhatsApp direto,
+-- sempre grava aqui primeiro. idempotency_key evita mandar a mesma coisa 2x se o
+-- worker reiniciar no meio do processamento (ver services/notifications/queue.py).
+CREATE TABLE IF NOT EXISTS notification_queue (
+    id               BIGSERIAL PRIMARY KEY,
+    idempotency_key  TEXT NOT NULL UNIQUE,
+    to_phone         TEXT NOT NULL,
+    message          TEXT NOT NULL,
+    status           TEXT NOT NULL DEFAULT 'pending',  -- pending | sent | dead_letter
+    attempts         INT NOT NULL DEFAULT 0,
+    max_attempts     INT NOT NULL DEFAULT 3,
+    last_error       TEXT,
+    provider         TEXT,  -- qual WhatsAppProvider processou por último (rastreabilidade)
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    sent_at          TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_notification_queue_status ON notification_queue (status, created_at);

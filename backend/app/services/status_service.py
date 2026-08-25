@@ -79,9 +79,21 @@ def last_scheduler_activity() -> dict:
     return {"last_periodic_snapshot": last_periodic, "last_odds_capture": last_odds}
 
 
+def notification_queue_status() -> dict:
+    conn = db.get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT status, count(*) FROM notification_queue GROUP BY status")
+            rows = dict(cur.fetchall())
+    finally:
+        conn.close()
+    return {"pending": rows.get("pending", 0), "sent": rows.get("sent", 0), "dead_letter": rows.get("dead_letter", 0)}
+
+
 def build_status_report() -> dict:
     return {
         "sources": source_sync_status(),
         "data_counts": data_counts(),
         "scheduler": last_scheduler_activity(),
+        "notification_queue": notification_queue_status(),
     }
