@@ -1,7 +1,7 @@
 const STATS = [
-  { value: "6", label: "competições monitoradas" },
-  { value: "2+", label: "casas de apostas comparadas" },
-  { value: "4h", label: "frequência de atualização" },
+  { value: "30+", label: "mercados analisados por partida" },
+  { value: "4", label: "modelos estatísticos independentes" },
+  { value: "multi-casa", label: "odd real comparada entre bookmakers" },
 ]
 
 export function StatsStrip() {
