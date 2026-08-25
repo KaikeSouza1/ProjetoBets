@@ -206,6 +206,17 @@ def _stale_message() -> str:
     )
 
 
+def _resolve_snapshot_fd_match_id(match: dict) -> int | None:
+    """`fd_match_id` só vai pro banco quando é uma linha real de `fd_matches` — pra liga
+    só-API-Football (Copa do Brasil), `match["fd_match_id"]` é fabricado (reaproveita
+    fixture_id só pra roteamento/API, ver analysis_service._fixtures_only_league_matches).
+    Gravar esse id fabricado como FK derrubava `record_snapshot` com ForeignKeyViolation
+    e, por sua vez, o scheduler inteiro (achado real: loop de crash/restart a cada
+    ~2min, cada restart refazendo sync completo — causa raiz de boa parte do estouro de
+    cota da API-Football num único dia)."""
+    return match["fd_match_id"] if match.get("fd_match_id_is_real", True) else None
+
+
 def get_analysis(
     match: dict, last_updated=_UNSET, source: str = snapshot_service.MANUAL_VIEW, sort_by: str = "valor",
 ) -> MatchAnalysisOut:
@@ -227,7 +238,7 @@ def get_analysis(
     # request ali)
     all_opps = [o for data in families.values() if not data["error"] for o in data["opportunities"]]
     if all_opps:
-        snapshot_service.record_snapshot(match["fixture_id"], match["fd_match_id"], all_opps, source=source)
+        snapshot_service.record_snapshot(match["fixture_id"], _resolve_snapshot_fd_match_id(match), all_opps, source=source)
 
     return MatchAnalysisOut(
         state=state, best_opportunity=best, other_opportunities=others, reasons=reasons,

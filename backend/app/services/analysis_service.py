@@ -135,6 +135,16 @@ def _fixtures_only_league_matches(days_ahead: int) -> list[dict]:
             "away_team_id": r[8], "away_team": r[9],
             "home_goals": r[10], "away_goals": r[11],
             "has_full_data": True,
+            # fd_match_id acima é o id da FIXTURE reaproveitado (não existe id
+            # football-data.org pra essas partidas — ver docstring da função) — serve só
+            # pra roteamento/API, NUNCA é uma linha real em `fd_matches`. Achado real:
+            # snapshot_service.record_snapshot gravando isso como FK travava com
+            # ForeignKeyViolation e derrubava o scheduler inteiro (loop de crash/restart
+            # a cada ~2min, 65x num único dia, cada restart refazendo sync completo —
+            # essa é a causa raiz de boa parte do estouro de cota, não os backfills
+            # manuais). match_service.get_analysis usa esta flag pra nunca passar esse
+            # id pro banco como fd_match_id, só fixture_id.
+            "fd_match_id_is_real": False,
         }
         for r in rows
     ]
@@ -223,6 +233,7 @@ def _get_fixtures_only_league_match(fixture_id: int) -> dict | None:
         "home_goals": row[10], "away_goals": row[11],
         "fixture_id": row[0], "referee": row[12],
         "has_full_data": True,
+        "fd_match_id_is_real": False,  # ver nota em _fixtures_only_league_matches
     }
 
 
