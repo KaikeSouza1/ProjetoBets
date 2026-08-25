@@ -6,7 +6,7 @@ export const BRAND_NAME = "GreenOdds"
 // Fluxo: usuário manda a PRIMEIRA mensagem pra esse número (evita ban de conta
 // nova por disparo em massa). Depois disso, o robô responde a partir de "/odds".
 export const WHATSAPP_NUMBER = "5542998119282"
-export const WHATSAPP_DEFAULT_MESSAGE = "Oi! Quero receber as odds do dia."
+export const WHATSAPP_DEFAULT_MESSAGE = "Olá, quero receber odds gratuitas."
 
 export function whatsappLink(message: string = WHATSAPP_DEFAULT_MESSAGE): string {
   return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`
