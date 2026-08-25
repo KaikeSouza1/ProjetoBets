@@ -14,6 +14,15 @@ def fetch_fixtures_for_date(day: date_cls) -> list[NormalizedFixture]:
     return [_normalize(item) for item in results]
 
 
+def fetch_fixtures_for_league_season(league_external_id: int, season: int) -> list[NormalizedFixture]:
+    """1 chamada devolve a temporada inteira da liga (API-Football não pagina isso) —
+    usado pra backfill de liga sem football_data_code (ver jobs/backfill_api_football_league.py),
+    já que `fetch_fixtures_for_date` só alcança o que o job diário sincroniza (janela de
+    poucos dias), nunca o histórico passado."""
+    results = api_football.get("fixtures", {"league": league_external_id, "season": season})
+    return [_normalize(item) for item in results]
+
+
 def _normalize(item: dict) -> NormalizedFixture:
     fx = item["fixture"]
     goals = item["goals"]

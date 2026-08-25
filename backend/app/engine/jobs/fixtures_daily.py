@@ -89,3 +89,29 @@ def sync_fixtures_for_date(day: date_cls) -> int:
 
     print(f"[fixtures_daily] {day.isoformat()}: {len(fixtures)} jogos no mundo, {saved} salvos (ligas-alvo)")
     return saved
+
+
+def sync_fixtures_for_league_season(league_id: int, season: int) -> int:
+    """Backfill pontual (não roda no daily_job): temporada inteira de UMA liga via
+    API-Football. Existe pra ligas sem `football_data_code` (Copa do Brasil e afins) —
+    essas nunca ganham histórico passado pelo sync diário normal, que só alcança
+    ontem/hoje/amanhã (ver `sync_fixtures_for_date` e `daily_job.py`). Sem isso, o
+    modelo de gols fica em cold-start permanente pra qualquer liga só-API-Football
+    (achado real: Copa do Brasil com 1 fixture sincronizada, 0 finalizada, apesar de
+    ter odd real capturada — a odd não ajuda em nada sem histórico pra calibrar força
+    de ataque/defesa dos times)."""
+    fixtures = api_football_fixtures.fetch_fixtures_for_league_season(league_id, season)
+
+    conn = db.get_connection()
+    saved = 0
+    try:
+        with conn.cursor() as cur:
+            for fixture in fixtures:
+                _store_fixture(cur, fixture)
+                saved += 1
+        conn.commit()
+    finally:
+        conn.close()
+
+    print(f"[fixtures_daily] backfill liga {league_id} temporada {season}: {saved} partidas salvas")
+    return saved
