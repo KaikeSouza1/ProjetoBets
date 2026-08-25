@@ -35,7 +35,7 @@ def run():
             for fd_id, fd_name in fd_only:
                 fd_norm = teammatch.normalize(fd_name)
                 match = next(
-                    (af_id for af_id, af_name in af_only if teammatch._names_match(teammatch.normalize(af_name), fd_norm)),
+                    (af_id for af_id, af_name in af_only if teammatch.names_match(teammatch.normalize(af_name), fd_norm)),
                     None,
                 )
                 if match is None:

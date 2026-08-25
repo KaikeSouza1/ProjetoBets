@@ -82,17 +82,30 @@ def _fetch_matches_from_fixtures(league_id: int) -> list[tuple]:
         conn.close()
 
 
+# Copa nacional joga com o elenco principal da liga doméstica na maior parte das vezes
+# — quando a copa em si tem pouquíssimo jogo por temporada (mata-mata, poucas rodadas),
+# pedir emprestada a força calculada na liga doméstica (mesmos times, MUITO mais jogo)
+# é uma estimativa melhor que treinar com quase nenhum dado. Achado real: Cruzeiro x
+# Atlético-MG (Copa do Brasil) tinha n_matches=1 cada isoladamente; os dois times somam
+# 24 partidas no Brasileirão (BSA) na mesma temporada. Risco assumido e não escondido:
+# clube que roda o time reserva na copa vai ter força superestimada aqui — ainda assim
+# bate mais que zero dado ou um "1 jogo só" degenerado.
+_STRENGTH_SOURCE_LEAGUE = {73: 71}  # Copa do Brasil -> Brasileirão Série A
+
+
 def build_league_model(league_id: int) -> LeagueModel:
+    source_league_id = _STRENGTH_SOURCE_LEAGUE.get(league_id, league_id)
+
     conn = db.get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT football_data_code FROM leagues WHERE id = %s", (league_id,))
+            cur.execute("SELECT football_data_code FROM leagues WHERE id = %s", (source_league_id,))
             row = cur.fetchone()
     finally:
         conn.close()
 
     code = row[0] if row else None
-    matches = _fetch_matches_from_fd_matches(code) if code else _fetch_matches_from_fixtures(league_id)
+    matches = _fetch_matches_from_fd_matches(code) if code else _fetch_matches_from_fixtures(source_league_id)
 
     if not matches:
         source_hint = "season_form.sync_league_results()" if code else "fixtures_daily (aguardar API-Football capturar partidas)"
