@@ -20,6 +20,10 @@
   /* verde "esmeralda", usado em acerto/positivo, ícone, link sobre fundo branco */
   --positive: #1aa564;
   --positive-bg: #e4f7ee;
+
+  /* verde escuro sólido, usado em blocos de cor cheios (header, footer, faixa de stats) */
+  --green-deep: #0b2b1a;
+  --green-deep-2: #123a24;
   --negative: #e23b3b;
   --negative-bg: #fdecec;
 
@@ -57,6 +61,8 @@ body {
   --color-brand-ink: var(--brand-ink);
   --color-positive: var(--positive);
   --color-positive-bg: var(--positive-bg);
+  --color-green-deep: var(--green-deep);
+  --color-green-deep-2: var(--green-deep-2);
   --color-negative: var(--negative);
   --color-negative-bg: var(--negative-bg);
   --font-sans: "Archivo", system-ui, "Segoe UI", Roboto, sans-serif;

@@ -6,12 +6,12 @@ const STATS = [
 
 export function StatsStrip() {
   return (
-    <section className="border-y border-border bg-surface">
-      <div className="mx-auto grid max-w-5xl grid-cols-3 gap-4 px-4 py-8 sm:px-6">
+    <section className="bg-green-deep">
+      <div className="mx-auto grid max-w-5xl grid-cols-1 gap-8 px-4 py-12 sm:grid-cols-3 sm:px-6 sm:py-16">
         {STATS.map((s) => (
-          <div key={s.label} className="text-center">
-            <p className="text-3xl font-black text-brand-600 sm:text-4xl">{s.value}</p>
-            <p className="mt-1 text-xs text-text-muted sm:text-sm">{s.label}</p>
+          <div key={s.label} className="text-center sm:border-l sm:border-white/10 sm:first:border-l-0">
+            <p className="text-4xl font-black text-brand sm:text-5xl">{s.value}</p>
+            <p className="mt-2 text-sm text-white/70">{s.label}</p>
           </div>
         ))}
       </div>
