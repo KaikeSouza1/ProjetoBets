@@ -1,5 +1,5 @@
 """Integração real com Postgres — fila de notificação (idempotência, retry, dead-letter).
-Nunca chama Evolution API de verdade: provider padrão em teste é sempre ConsoleWhatsAppProvider
+Nunca chama CodeChat de verdade: provider padrão em teste é sempre ConsoleWhatsAppProvider
 (sem credencial configurada) ou um fake injetado explicitamente."""
 from dataclasses import dataclass
 

@@ -28,10 +28,12 @@ DATA_STALE_THRESHOLD_HOURS = int(os.environ.get("DATA_STALE_THRESHOLD_HOURS", "4
 ODDS_CAPTURE_MAX_FIXTURES_PER_RUN = int(os.environ.get("ODDS_CAPTURE_MAX_FIXTURES_PER_RUN", "5"))
 ODDS_CAPTURE_COOLDOWN_HOURS = int(os.environ.get("ODDS_CAPTURE_COOLDOWN_HOURS", "3"))
 
-# Evolution API (WhatsApp não-oficial, self-hosted) — opcional de propósito. Sem os 3
-# configurados, `notifications.provider.get_provider()` cai pro ConsoleWhatsAppProvider
-# (só loga, nunca manda mensagem de verdade) — nunca falha por falta de credencial,
-# só não envia nada real até você configurar isso.
-EVOLUTION_API_URL = os.environ.get("EVOLUTION_API_URL")
-EVOLUTION_API_KEY = os.environ.get("EVOLUTION_API_KEY")
-EVOLUTION_API_INSTANCE = os.environ.get("EVOLUTION_API_INSTANCE")
+# CodeChat (WhatsApp não-oficial, self-hosted — container `api_codechat` já rodando na
+# VM, porta 28080) — opcional de propósito. Sem os 3 configurados,
+# `notifications.provider.get_provider()` cai pro ConsoleWhatsAppProvider (só loga,
+# nunca manda mensagem de verdade) — nunca falha por falta de credencial, só não envia
+# nada real até isso ser configurado. Ver scripts/codechat_manager.py pra criar/parear
+# a instância.
+CODECHAT_BASE_URL = os.environ.get("CODECHAT_BASE_URL")
+CODECHAT_GLOBAL_API_KEY = os.environ.get("CODECHAT_GLOBAL_API_KEY")
+CODECHAT_INSTANCE_NAME = os.environ.get("CODECHAT_INSTANCE_NAME")

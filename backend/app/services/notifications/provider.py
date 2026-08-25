@@ -1,11 +1,11 @@
-"""WhatsAppProvider — a Oportunidade nunca chama Evolution API (ou qualquer outro
-provedor) direto. Sempre por aqui, pra poder trocar de provedor sem tocar em fila,
-worker ou opportunity engine.
+"""WhatsAppProvider — a Oportunidade nunca chama CodeChat (ou qualquer outro provedor)
+direto. Sempre por aqui, pra poder trocar de provedor sem tocar em fila, worker ou
+opportunity engine.
 
 `ConsoleWhatsAppProvider` é o padrão de segurança: sem credencial nenhuma configurada,
 o sistema nunca tenta mandar mensagem de verdade, só loga — arquitetura pronta pra
-plugar Evolution API (ou WhatsApp Cloud API oficial) assim que a credencial existir,
-sem precisar reescrever fila/worker."""
+plugar CodeChat (ou WhatsApp Cloud API oficial) assim que a credencial existir, sem
+precisar reescrever fila/worker."""
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -38,11 +38,14 @@ class ConsoleWhatsAppProvider:
         return SendResult(ok=True, provider=self.name)
 
 
-class EvolutionApiProvider:
-    """Evolution API (self-hosted, não-oficial) — só é escolhido por `get_provider`
-    quando EVOLUTION_API_URL/KEY/INSTANCE estiverem configurados no .env."""
+class CodeChatProvider:
+    """CodeChat (self-hosted, não-oficial, WPPConnect por baixo) — container real já
+    rodando na VM (`api_codechat`, porta 28080). Só é escolhido por `get_provider`
+    quando CODECHAT_BASE_URL/GLOBAL_API_KEY/INSTANCE_NAME estiverem configurados no
+    ambiente. Formato de corpo/rota confirmado direto no swagger da instância rodando
+    (/docs), não documentação externa — ver scripts/codechat_manager.py."""
 
-    name = "evolution-api"
+    name = "codechat"
 
     def __init__(self, base_url: str, api_key: str, instance: str):
         self.base_url = base_url.rstrip("/")
@@ -54,7 +57,11 @@ class EvolutionApiProvider:
             resp = requests.post(
                 f"{self.base_url}/message/sendText/{self.instance}",
                 headers={"apikey": self.api_key},
-                json={"number": to_phone, "text": message},
+                json={
+                    "number": to_phone,
+                    "options": {"delay": 1200, "presence": "composing"},
+                    "textMessage": {"text": message},
+                },
                 timeout=15,
             )
         except requests.RequestException as exc:
@@ -65,6 +72,6 @@ class EvolutionApiProvider:
 
 
 def get_provider() -> WhatsAppProvider:
-    if config.EVOLUTION_API_URL and config.EVOLUTION_API_KEY and config.EVOLUTION_API_INSTANCE:
-        return EvolutionApiProvider(config.EVOLUTION_API_URL, config.EVOLUTION_API_KEY, config.EVOLUTION_API_INSTANCE)
+    if config.CODECHAT_BASE_URL and config.CODECHAT_GLOBAL_API_KEY and config.CODECHAT_INSTANCE_NAME:
+        return CodeChatProvider(config.CODECHAT_BASE_URL, config.CODECHAT_GLOBAL_API_KEY, config.CODECHAT_INSTANCE_NAME)
     return ConsoleWhatsAppProvider()
