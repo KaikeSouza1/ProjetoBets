@@ -1,33 +1,28 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #ffffff;
-  --bg-subtle: #f2faf5;
-  --surface: #ffffff;
-  --surface-2: #f7fdf9;
-  --border: #dbe9e0;
+  --bg: #0a0e0c;
+  --surface: #121815;
+  --surface-2: #1a2320;
+  --border: #232d28;
+  --border-strong: #34423b;
 
-  --text: #0f1a14;
-  --text-muted: #4f5d55;
-  --text-subtle: #7c8b82;
+  --text: #f3f6f4;
+  --text-muted: #a3ada6;
+  --text-subtle: #6b756f;
 
-  /* verde-lima de marca, usado em CTA/destaque, texto escuro por cima (não branco) */
+  /* único acento de marca, verde-lima, usado só em CTA e destaque de dado */
   --brand: #c2ff0b;
-  --brand-hover: #aee609;
-  --brand-600: #7fc010;
-  --brand-ink: #0f1a14;
+  --brand-ink: #0a0e0c;
 
-  /* verde "esmeralda", usado em acerto/positivo, ícone, link sobre fundo branco */
-  --positive: #1aa564;
-  --positive-bg: #e4f7ee;
+  /* verde real do WhatsApp, só aparece dentro do mockup de conversa */
+  --whatsapp: #25d366;
+  --whatsapp-dark: #075e54;
 
-  /* verde escuro sólido, usado em blocos de cor cheios (header, footer, faixa de stats) */
-  --green-deep: #0b2b1a;
-  --green-deep-2: #123a24;
-  --negative: #e23b3b;
-  --negative-bg: #fdecec;
+  --negative: #ff6b5e;
 
-  --shadow-card: 0 10px 30px -12px rgba(15, 26, 20, 0.18);
+  --font-display: "Archivo", system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 }
 
 * {
@@ -42,28 +37,39 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: "Archivo", system-ui, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-display);
   -webkit-font-smoothing: antialiased;
 }
 
 @theme inline {
   --color-bg: var(--bg);
-  --color-bg-subtle: var(--bg-subtle);
   --color-surface: var(--surface);
   --color-surface-2: var(--surface-2);
   --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
   --color-text: var(--text);
   --color-text-muted: var(--text-muted);
   --color-text-subtle: var(--text-subtle);
   --color-brand: var(--brand);
-  --color-brand-hover: var(--brand-hover);
-  --color-brand-600: var(--brand-600);
   --color-brand-ink: var(--brand-ink);
-  --color-positive: var(--positive);
-  --color-positive-bg: var(--positive-bg);
-  --color-green-deep: var(--green-deep);
-  --color-green-deep-2: var(--green-deep-2);
+  --color-whatsapp: var(--whatsapp);
+  --color-whatsapp-dark: var(--whatsapp-dark);
   --color-negative: var(--negative);
-  --color-negative-bg: var(--negative-bg);
-  --font-sans: "Archivo", system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-sans: var(--font-display);
+  --font-mono: var(--font-mono);
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.5s ease-out both;
 }

@@ -12,6 +12,45 @@ export function whatsappLink(message: string = WHATSAPP_DEFAULT_MESSAGE): string
   return `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`
 }
 
+// mensagens de exemplo pro mockup de WhatsApp (hero e "produto na prática").
+// Times reais, resultado fictício, deixado claro na tela como "exemplo ilustrativo",
+// nunca como resultado real (não existe track record ainda, ver auditoria do produto)
+export interface SampleMessage {
+  match: string
+  market: string
+  odd: string
+  confidence: "alta" | "média"
+  time: string
+  note: string
+}
+
+export const SAMPLE_MESSAGES: SampleMessage[] = [
+  {
+    match: "Flamengo x Palmeiras",
+    market: "Mais de 2.5 gols",
+    odd: "1.87",
+    confidence: "alta",
+    time: "19:30",
+    note: "Modelo estima probabilidade acima do que a odd implica.",
+  },
+  {
+    match: "Real Madrid x Barcelona",
+    market: "Ambas marcam",
+    odd: "1.75",
+    confidence: "média",
+    time: "16:00",
+    note: "Amostra ainda crescendo nesta liga.",
+  },
+  {
+    match: "Man City x Liverpool",
+    market: "Vitória do mandante",
+    odd: "2.10",
+    confidence: "alta",
+    time: "13:30",
+    note: "Odd comparada entre Bet365 e Superbet.",
+  },
+]
+
 export type PlanId = "gratis" | "pro"
 
 export interface Plan {
