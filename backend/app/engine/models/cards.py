@@ -68,8 +68,14 @@ def _fetch_matches(league_id: int):
     return matches
 
 
+# mesma razão do poisson_goals.py: copa nacional com pouquíssima estatística própria
+# pede emprestada a da liga doméstica (mesmos times, mais partida com fixture_statistics
+# já capturada) — ver poisson_goals.py pro raciocínio completo e o risco assumido
+_STRENGTH_SOURCE_LEAGUE = {73: 71}  # Copa do Brasil -> Brasileirão Série A
+
+
 def build_league_model(league_id: int) -> LeagueModel:
-    matches = _fetch_matches(league_id)
+    matches = _fetch_matches(_STRENGTH_SOURCE_LEAGUE.get(league_id, league_id))
     if not matches:
         raise ValueError(
             f"liga {league_id}: nenhuma partida com estatística de cartão ainda — "
