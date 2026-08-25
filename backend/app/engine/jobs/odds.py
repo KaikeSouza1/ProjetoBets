@@ -1,8 +1,12 @@
-"""Odds — sob demanda (usuário abre a análise) e automática (`capture_odds_for_upcoming_fixtures`,
-chamada pelo scheduler). Cada chamada grava um snapshot novo (nunca sobrescreve), para
-permitir ver o movimento da odd depois — e, com captura automática repetida, começar a
-construir o par (odd pré-jogo, resultado real) que o backtest com odds reais precisa
-(ver `engine/backtest/historical_eval.py`).
+"""Odds — só automática (`capture_odds_for_upcoming_fixtures`, chamada pelo scheduler).
+Não existe caminho "sob demanda" hoje: nenhuma rota da API chama `fetch_and_store_odds`
+quando alguém abre a análise de uma partida (achado revisando o orçamento de cota,
+25/08/2026 — comentário antigo dizia o contrário, ficou desatualizado). Isso significa
+que TODO o consumo de odds na API-Football é previsível/controlado pelo agendador,
+nunca varia com tráfego de usuário. Cada chamada grava um snapshot novo (nunca
+sobrescreve), para permitir ver o movimento da odd depois — e, com captura automática
+repetida, começar a construir o par (odd pré-jogo, resultado real) que o backtest com
+odds reais precisa (ver `engine/backtest/historical_eval.py`).
 
 Fetch/normalização vêm de `providers.api_football_odds` — este módulo só orquestra
 (seleciona partida, chama o provider, grava). Não importa `api_football` diretamente."""
