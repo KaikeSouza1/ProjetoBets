@@ -10,10 +10,33 @@ from app.engine import teammatch
 from app.engine.providers import api_football_fixtures
 from app.engine.providers.fixtures import NormalizedFixture
 
+# achado real na auditoria de cota (25/08/2026): `run_daily_sync` roda a cada 4h pelo
+# agendador, mas TAMBÉM roda inteiro de novo toda vez que o processo do scheduler é
+# reiniciado (deploy, ou o crash loop que motivou essa auditoria) — sem checkpoint, um
+# restart no mesmo minuto de outro já refaz as 3 chamadas de fixtures (ontem/hoje/amanhã)
+# do zero. `raw_api_payloads` já arquiva toda chamada com os parâmetros (existe desde
+# sempre "pra poder reprocessar sem gastar cota de novo" — nunca foi usado assim até
+# agora). Menor que o intervalo normal de 4h de propósito: nunca atrasa o ciclo
+# combinado, só absorve restart repetido em sequência curta (deploy, crash).
+SYNC_FRESHNESS_COOLDOWN_MINUTES = 45
+
 
 def _target_league_ids(cur) -> set[int]:
     cur.execute("SELECT id FROM leagues")
     return {row[0] for row in cur.fetchall()}
+
+
+def _recently_synced(cur, day: date_cls) -> bool:
+    cur.execute(
+        """SELECT EXISTS(
+               SELECT 1 FROM raw_api_payloads
+               WHERE source = 'api-football' AND endpoint = 'fixtures'
+                 AND params->>'date' = %s
+                 AND fetched_at > now() - (%s || ' minutes')::interval
+           )""",
+        (day.isoformat(), SYNC_FRESHNESS_COOLDOWN_MINUTES),
+    )
+    return cur.fetchone()[0]
 
 
 def _upsert_venue(cur, venue) -> int | None:
@@ -71,6 +94,18 @@ def _store_fixture(cur, fixture: NormalizedFixture):
 
 
 def sync_fixtures_for_date(day: date_cls) -> int:
+    conn = db.get_connection()
+    try:
+        with conn.cursor() as cur:
+            if _recently_synced(cur, day):
+                print(
+                    f"[fixtures_daily] {day.isoformat()}: pulado — já sincronizado há menos de "
+                    f"{SYNC_FRESHNESS_COOLDOWN_MINUTES}min (provável restart do scheduler)"
+                )
+                return 0
+    finally:
+        conn.close()
+
     fixtures = api_football_fixtures.fetch_fixtures_for_date(day)
 
     conn = db.get_connection()
