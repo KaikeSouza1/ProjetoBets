@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.routes import backtests, dashboard, health, leads, leagues, matches, status, teams
+from app.api.routes import backtests, dashboard, health, leads, leagues, matches, status, teams, whatsapp
 from app.core import db
 from app.core.errors import InsufficientDataError, NotFoundError
 
@@ -54,3 +54,4 @@ app.include_router(teams.router)
 app.include_router(backtests.router)
 app.include_router(leads.router)
 app.include_router(status.router)
+app.include_router(whatsapp.router)

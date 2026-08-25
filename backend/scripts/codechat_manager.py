@@ -98,6 +98,19 @@ def cmd_delete(args):
     print(f"delete {args.name}: {resp.status_code}")
 
 
+def cmd_webhook_set(args):
+    resp = requests.put(
+        f"{BASE_URL}/webhook/set/{args.name}",
+        headers=_headers(),
+        json={"enabled": True, "url": args.url, "events": {"messagesUpsert": True}},
+        timeout=15,
+    )
+    if resp.status_code >= 300:
+        print(f"falhou ({resp.status_code}): {resp.text}", file=sys.stderr)
+        sys.exit(1)
+    print(f"webhook configurado: {resp.json()}")
+
+
 def cmd_send(args):
     resp = requests.post(
         f"{BASE_URL}/message/sendText/{args.name}",
@@ -142,6 +155,11 @@ def main():
     p = sub.add_parser("delete")
     p.add_argument("name")
     p.set_defaults(func=cmd_delete)
+
+    p = sub.add_parser("webhook-set")
+    p.add_argument("name")
+    p.add_argument("url")
+    p.set_defaults(func=cmd_webhook_set)
 
     p = sub.add_parser("send")
     p.add_argument("name")

@@ -39,7 +39,7 @@ def _fetch_active_leads() -> list[tuple[int, str, str, str]]:
 _MIN_CONFIDENCE_FOR_NOTIFICATION = {"média", "alta"}
 
 
-def _eligible_opportunities(reference_date: datetime.date) -> list:
+def eligible_opportunities(reference_date: datetime.date) -> list:
     """Top oportunidades do dashboard (já ranqueadas por opportunity_score), só as
     que realmente têm o que mostrar: odd real, edge calculado, confiança mínima, e a
     partida ainda não começou hoje ou depois — nunca manda oportunidade de jogo já em
@@ -58,7 +58,7 @@ def _eligible_opportunities(reference_date: datetime.date) -> list:
     return out
 
 
-def _format_message(summary) -> str:
+def format_opportunity_message(summary) -> str:
     best = summary.best_opportunity
     return (
         f"{summary.home_team} x {summary.away_team} ({summary.league_name})\n"
@@ -69,12 +69,12 @@ def _format_message(summary) -> str:
 
 
 def enqueue_daily_opportunities(reference_date: datetime.date | None = None, opportunities: list | None = None) -> dict:
-    """`opportunities` normalmente vem de `_eligible_opportunities` (produção) —
+    """`opportunities` normalmente vem de `eligible_opportunities` (produção) —
     parâmetro existe pra teste injetar oportunidades reais (MatchSummaryOut/
     OpportunityOut de verdade) sem precisar montar fixture+odds+modelo completos
     só pra popular o dashboard (mesmo padrão do `provider` em queue.process_pending)."""
     reference_date = reference_date or datetime.date.today()
-    opportunities = _eligible_opportunities(reference_date) if opportunities is None else opportunities
+    opportunities = eligible_opportunities(reference_date) if opportunities is None else opportunities
     leads = _fetch_active_leads()
 
     enqueued = skipped_no_opportunity = skipped_duplicate = 0
@@ -86,7 +86,7 @@ def enqueue_daily_opportunities(reference_date: datetime.date | None = None, opp
             continue
         for summary in picks:
             idempotency_key = f"lead:{lead_id}:{reference_date.isoformat()}:{summary.fixture_id}:{summary.best_opportunity.market_key}"
-            queued = notification_queue.enqueue(phone, _format_message(summary), idempotency_key)
+            queued = notification_queue.enqueue(phone, format_opportunity_message(summary), idempotency_key)
             if queued:
                 enqueued += 1
             else:
