@@ -25,6 +25,21 @@
   --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
 }
 
+:root[data-theme="light"] {
+  --bg: #ffffff;
+  --surface: #f6faf7;
+  --surface-2: #edf3ef;
+  --border: #e1e8e3;
+  --border-strong: #c7d2cb;
+
+  --text: #0f1a14;
+  --text-muted: #4f5d55;
+  --text-subtle: #838f88;
+
+  --brand-ink: #0f1a14;
+  --negative: #d6362a;
+}
+
 * {
   box-sizing: border-box;
 }

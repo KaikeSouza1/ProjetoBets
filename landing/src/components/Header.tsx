@@ -1,4 +1,5 @@
 import { BRAND_NAME } from "@/config"
+import { ThemeToggle } from "@/components/ThemeToggle"
 
 export function Header() {
   return (
@@ -7,12 +8,15 @@ export function Header() {
         <span className="font-mono text-sm font-bold tracking-tight text-text">
           {BRAND_NAME.toLowerCase()}<span className="text-brand">_</span>
         </span>
-        <a
-          href="#planos"
-          className="rounded-md border border-border-strong px-4 py-1.5 font-mono text-xs font-bold uppercase tracking-wide text-text transition-colors hover:border-brand hover:text-brand"
-        >
-          Quero receber
-        </a>
+        <div className="flex items-center gap-3">
+          <ThemeToggle />
+          <a
+            href="#planos"
+            className="rounded-md border border-border-strong px-4 py-1.5 font-mono text-xs font-bold uppercase tracking-wide text-text transition-colors hover:border-brand hover:text-brand"
+          >
+            Quero receber
+          </a>
+        </div>
       </div>
     </header>
   )
