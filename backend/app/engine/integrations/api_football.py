@@ -26,12 +26,19 @@ def get(endpoint: str, params: dict | None = None) -> list:
     )
     payload = resp.json()
 
+    # API-Football devolve HTTP 200 mesmo quando recusa por cota/limite — achado real
+    # rodando um backfill que falhou 118/118 vezes e nenhuma apareceu como erro em
+    # /api/status (status_code>=400 é o critério de errors_24h ali). Loga 429 sempre
+    # que o corpo trouxer `errors`, mesmo com transporte 200 — o que importa pro
+    # monitoramento é "essa chamada devolveu dado usável", não o código HTTP puro.
+    logged_status_code = 429 if payload.get("errors") else resp.status_code
+
     conn = db.get_connection()
     try:
         with conn.cursor() as cur:
             cur.execute(
                 "INSERT INTO api_request_log (source, endpoint, status_code) VALUES (%s, %s, %s)",
-                (SOURCE, endpoint, resp.status_code),
+                (SOURCE, endpoint, logged_status_code),
             )
             cur.execute(
                 """INSERT INTO raw_api_payloads (source, endpoint, params, payload)
