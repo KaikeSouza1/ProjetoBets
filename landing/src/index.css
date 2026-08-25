@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #ffffff;
+  --bg-subtle: #f2faf5;
+  --surface: #ffffff;
+  --surface-2: #f7fdf9;
+  --border: #dbe9e0;
+
+  --text: #0f1a14;
+  --text-muted: #4f5d55;
+  --text-subtle: #7c8b82;
+
+  /* verde-lima de marca — usado em CTA/destaque, texto escuro por cima (não branco) */
+  --brand: #c2ff0b;
+  --brand-hover: #aee609;
+  --brand-600: #7fc010;
+  --brand-ink: #0f1a14;
+
+  /* verde "esmeralda" — acerto/positivo, ícone, link sobre fundo branco */
+  --positive: #1aa564;
+  --positive-bg: #e4f7ee;
+  --negative: #e23b3b;
+  --negative-bg: #fdecec;
+
+  --shadow-card: 0 10px 30px -12px rgba(15, 26, 20, 0.18);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Archivo", system-ui, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-bg-subtle: var(--bg-subtle);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-subtle: var(--text-subtle);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-brand-600: var(--brand-600);
+  --color-brand-ink: var(--brand-ink);
+  --color-positive: var(--positive);
+  --color-positive-bg: var(--positive-bg);
+  --color-negative: var(--negative);
+  --color-negative-bg: var(--negative-bg);
+  --font-sans: "Archivo", system-ui, "Segoe UI", Roboto, sans-serif;
+}

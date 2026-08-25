@@ -436,3 +436,14 @@ CREATE INDEX IF NOT EXISTS idx_prediction_snapshots_fd_match ON prediction_snaps
 -- tabela já existia sem esta coluna em ambientes que rodaram o schema antes desta versão
 ALTER TABLE prediction_snapshots ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'MANUAL_VIEW';
 CREATE INDEX IF NOT EXISTS idx_prediction_snapshots_source ON prediction_snapshots (source);
+
+-- ==================== landing / captação (produto WhatsApp) ====================
+
+CREATE TABLE IF NOT EXISTS whatsapp_leads (
+    id          BIGSERIAL PRIMARY KEY,
+    name        TEXT NOT NULL,
+    phone       TEXT NOT NULL,              -- E.164 sem "+", ex.: 5542998119282
+    plan        TEXT NOT NULL DEFAULT 'gratis',  -- 'gratis' | 'pro' — plano escolhido no cadastro, não confirma pagamento
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_leads_phone ON whatsapp_leads (phone);
