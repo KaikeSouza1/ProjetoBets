@@ -30,7 +30,7 @@ export function SignupForm({ selectedPlan }: { selectedPlan: PlanId }) {
       await submitLead({ name: name.trim(), phone: `55${phoneDigits}`, plan })
       setStatus("done")
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Não deu pra completar o cadastro agora — tenta de novo em instantes.")
+      setError(err instanceof ApiError ? err.message : "Não deu pra completar o cadastro agora, tenta de novo em instantes.")
       setStatus("error")
     }
   }

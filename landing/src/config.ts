@@ -1,10 +1,10 @@
-// ponto único de configuração de marca/contato — trocar nome e número aqui
+// ponto único de configuração de marca/contato: trocar nome e número aqui
 // atualiza o site inteiro. Nome ainda não definido: placeholder deliberado.
 export const BRAND_NAME = "GreenOdds"
 
 // wa.me exige o número SEM "+" e sem espaços/traços, com DDI (55 = Brasil).
 // Fluxo: usuário manda a PRIMEIRA mensagem pra esse número (evita ban de conta
-// nova por disparo em massa) — depois disso, o robô responde a partir de "/odds".
+// nova por disparo em massa). Depois disso, o robô responde a partir de "/odds".
 export const WHATSAPP_NUMBER = "5542998119282"
 export const WHATSAPP_DEFAULT_MESSAGE = "Oi! Quero receber as odds do dia."
 
@@ -39,7 +39,7 @@ export const PLANS: Plan[] = [
   {
     id: "pro",
     name: "PRO",
-    price: "R$ 29",
+    price: "R$ 14,90",
     priceNote: "/mês",
     highlight: true,
     features: [

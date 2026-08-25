@@ -4,7 +4,7 @@ const STEPS = [
   {
     icon: MessageSquareText,
     title: "1. Manda um oi",
-    text: "Você inicia a conversa no WhatsApp — é assim que garantimos que a mensagem sempre chega, sem cair em spam.",
+    text: "Você inicia a conversa no WhatsApp. É assim que garantimos que a mensagem sempre chega, sem cair em spam.",
   },
   {
     icon: Zap,
@@ -14,7 +14,7 @@ const STEPS = [
   {
     icon: TrendingUp,
     title: "3. Recebe a análise",
-    text: "Toda vez que o modelo encontra valor real — probabilidade calculada vs. odd do mercado — você recebe a explicação, não só o palpite.",
+    text: "Toda vez que o modelo encontra valor real (probabilidade calculada vs. odd do mercado), você recebe a explicação, não só o palpite.",
   },
 ]
 
@@ -40,7 +40,7 @@ export function HowItWorks() {
 
       <div className="mt-8 flex items-center justify-center gap-2 text-xs text-text-subtle">
         <ShieldCheck className="h-4 w-4" />
-        Modelo estatístico auditável — nunca inventa dado que não existe.
+        Modelo estatístico auditável, nunca inventa dado que não existe.
       </div>
     </section>
   )

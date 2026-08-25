@@ -11,13 +11,13 @@
   --text-muted: #4f5d55;
   --text-subtle: #7c8b82;
 
-  /* verde-lima de marca — usado em CTA/destaque, texto escuro por cima (não branco) */
+  /* verde-lima de marca, usado em CTA/destaque, texto escuro por cima (não branco) */
   --brand: #c2ff0b;
   --brand-hover: #aee609;
   --brand-600: #7fc010;
   --brand-ink: #0f1a14;
 
-  /* verde "esmeralda" — acerto/positivo, ícone, link sobre fundo branco */
+  /* verde "esmeralda", usado em acerto/positivo, ícone, link sobre fundo branco */
   --positive: #1aa564;
   --positive-bg: #e4f7ee;
   --negative: #e23b3b;
