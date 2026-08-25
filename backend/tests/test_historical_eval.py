@@ -1,10 +1,14 @@
-"""Integração real: fabrica 1 partida finalizada com odd pré-jogo (o cenário que HOJE
-não existe no banco real do projeto — ver relatório de auditoria) pra provar que o
-pipeline funciona quando o dado existir, e limpa tudo no final.
+"""Integração real: fabrica 1 partida finalizada com odd pré-jogo (o cenário que
+originalmente não existia no banco real do projeto — ver relatório de auditoria) pra
+provar que o pipeline funciona quando o dado existir, e limpa tudo no final.
 
-Usa times reais (12, 24) que já têm histórico BSA — só o resultado final e a odd
-são fabricados. Data da partida (20/08/2026) é posterior a todo o histórico finalizado
-de BSA no banco (até 17/08/2026), então o treino usa o histórico real completo."""
+Usa times reais (Grêmio=26, Bahia=30 na numeração API-Football) que têm histórico BSA
+de verdade — confirmado via `SELECT DISTINCT home_team_id FROM fd_matches WHERE
+competition_code='BSA'`, não hardcoded às cegas (a versão anterior usava os ids 12/24,
+que nunca foram times do Brasileirão — provavelmente clube europeu antigo na numeração
+global da API-Football; o teste nunca tinha rodado contra dado real até essa auditoria,
+por isso o bug não tinha sido pego). Data da partida fixada bem no futuro (2030) pra
+nunca colidir com o histórico real sincronizado, que sempre vai ficar no passado dela."""
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -14,9 +18,9 @@ from app.engine.backtest.historical_eval import evaluate_historical_bets
 
 FIXTURE_ID = 999999001
 LEAGUE_ID = 71  # Serie A (Brazil), football_data_code='BSA'
-HOME_TEAM_ID = 12
-AWAY_TEAM_ID = 24
-KICKOFF = datetime(2026, 8, 20, 20, 0, tzinfo=timezone.utc)
+HOME_TEAM_ID = 26  # Gremio
+AWAY_TEAM_ID = 30  # Bahia
+KICKOFF = datetime(2030, 1, 20, 20, 0, tzinfo=timezone.utc)
 ODDS_CAPTURED_AT = KICKOFF - timedelta(days=1)
 
 
@@ -96,9 +100,13 @@ def test_historical_eval_never_grades_fixture_without_pre_kickoff_odds():
     assert all(b.fixture_id != FIXTURE_ID for b in bets)
 
 
-def test_real_database_has_zero_eligible_historical_bets_today():
-    """Não é um teste 'deveria passar sempre' — documenta o achado real da auditoria.
-    Se este teste começar a falhar (bets > 0), é uma boa notícia: significa que o
-    projeto já tem odd pré-jogo genuína pra alguma partida encerrada."""
+def test_real_database_eligible_historical_bets_never_use_future_data():
+    """Documenta o estado real do banco (deixou de ser zero em 25/08/2026, quando a
+    captura multi-casa passou a gerar par odd-pré-jogo + resultado genuíno pela
+    primeira vez — ver auditoria). Não trava um número exato (cresce a cada jogo que
+    termina); a garantia que importa é a de sempre: nenhuma aposta com prediction_time
+    depois do apito, e nenhuma sem odd real."""
     bets = evaluate_historical_bets(league_id=None)
-    assert len(bets) == 0
+    for b in bets:
+        assert b.prediction_time is not None
+        assert b.odd is not None

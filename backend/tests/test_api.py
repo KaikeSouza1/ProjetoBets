@@ -75,8 +75,14 @@ def test_historical_odds_summary_reports_insufficient_data_honestly():
     r = client.get("/api/backtests/historical")
     assert r.status_code == 200
     body = r.json()
-    # nenhuma partida no banco real tem odd pré-jogo + resultado ao mesmo tempo hoje —
-    # a API precisa dizer isso, nunca inventar um ROI
-    assert body["insufficient_data"] is True
-    assert body["n_bets"] == 0
-    assert body["message"] is not None
+    # o volume real de apostas elegíveis cresce com o tempo (odd multi-casa capturada
+    # + jogo terminando) — não hardcoda a contagem, só a regra: abaixo do mínimo de
+    # amostra (metrics.MIN_SAMPLE_INSUFFICIENT), a API tem que admitir que é pouco
+    # dado pra confiar, nunca inventar um ROI como se fosse robusto
+    from app.engine.backtest import metrics
+
+    if body["n_bets"] < metrics.MIN_SAMPLE_INSUFFICIENT:
+        assert body["insufficient_data"] is True
+        assert body["message"] is not None
+    else:
+        assert body["insufficient_data"] is False

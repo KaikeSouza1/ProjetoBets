@@ -271,14 +271,48 @@ CREATE INDEX IF NOT EXISTS idx_odds_values_snapshot ON odds_values (snapshot_id)
 
 -- ==================== saída do motor ====================
 
-CREATE TABLE IF NOT EXISTS feature_snapshots (
-    id            BIGSERIAL PRIMARY KEY,
-    fixture_id    BIGINT NOT NULL REFERENCES fixtures(id),
-    market_family TEXT NOT NULL,   -- 'goals' | 'corners' | 'cards' | 'player'
-    computed_at   TIMESTAMPTZ NOT NULL,
-    inputs        JSONB NOT NULL
-);
-CREATE INDEX IF NOT EXISTS idx_feature_snapshots_fixture ON feature_snapshots (fixture_id, market_family);
+-- `feature_snapshots` -> `model_predictions` -> `value_bets` eram o desenho normalizado
+-- original pra isso (previsão separada de aposta-contra-odd), mas nunca chegaram a
+-- receber 1 linha sequer — `prediction_snapshots` (mais abaixo) resolveu o mesmo
+-- problema de outro jeito e é o que o código usa de fato desde então. Auditado em
+-- 25/08/2026 (contagem de linhas = 0 nas 3, nenhum código referenciando fora daqui):
+-- lixo de schema, removido. Guarda condicional por segurança — só derruba se de fato
+-- não acumulou dado em algum ambiente que não foi auditado.
+-- EXECUTE (SQL dinâmico) de propósito: o Postgres tenta planejar uma subquery
+-- referenciando a tabela mesmo dentro de um IF que nunca chega a executá-la, e
+-- explode em "relation does not exist" numa instalação nova, onde essas tabelas
+-- nunca existiram. Adiando pra string só resolve a referência em tempo de execução,
+-- depois do to_regclass já ter confirmado que a tabela existe.
+DO $$
+DECLARE row_count INT;
+BEGIN
+    IF to_regclass('public.value_bets') IS NOT NULL THEN
+        EXECUTE 'SELECT count(*) FROM value_bets' INTO row_count;
+        IF row_count = 0 THEN
+            DROP TABLE value_bets;
+        END IF;
+    END IF;
+END $$;
+DO $$
+DECLARE row_count INT;
+BEGIN
+    IF to_regclass('public.model_predictions') IS NOT NULL THEN
+        EXECUTE 'SELECT count(*) FROM model_predictions' INTO row_count;
+        IF row_count = 0 THEN
+            DROP TABLE model_predictions;
+        END IF;
+    END IF;
+END $$;
+DO $$
+DECLARE row_count INT;
+BEGIN
+    IF to_regclass('public.feature_snapshots') IS NOT NULL THEN
+        EXECUTE 'SELECT count(*) FROM feature_snapshots' INTO row_count;
+        IF row_count = 0 THEN
+            DROP TABLE feature_snapshots;
+        END IF;
+    END IF;
+END $$;
 
 CREATE TABLE IF NOT EXISTS model_versions (
     id             SERIAL PRIMARY KEY,
@@ -289,56 +323,6 @@ CREATE TABLE IF NOT EXISTS model_versions (
     created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (market_family, version)
 );
-
-CREATE TABLE IF NOT EXISTS model_predictions (
-    id                    BIGSERIAL PRIMARY KEY,
-    fixture_id            BIGINT NOT NULL REFERENCES fixtures(id),
-    market_key            TEXT NOT NULL,
-    model_version_id      INT REFERENCES model_versions(id),
-    probability           NUMERIC(6,5) NOT NULL,
-    confidence            TEXT NOT NULL,   -- 'alta' | 'media' | 'baixa' -- calibração do modelo, não certeza do resultado
-    data_quality          NUMERIC(5,2) NOT NULL,  -- 0-100, ver valuebet.data_quality_score
-    feature_snapshot_id   BIGINT REFERENCES feature_snapshots(id),
-    computed_at           TIMESTAMPTZ NOT NULL DEFAULT now()
-);
--- migração idempotente: tabela nunca recebeu dados (nada no código grava nela ainda), então
--- ajustar o tipo é seguro em qualquer ambiente, com ou sem o schema antigo aplicado.
-DO $$
-BEGIN
-    IF EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_name = 'model_predictions' AND column_name = 'data_quality' AND data_type = 'text'
-    ) THEN
-        ALTER TABLE model_predictions ALTER COLUMN data_quality TYPE NUMERIC(5,2) USING data_quality::numeric;
-    END IF;
-END $$;
-
-CREATE INDEX IF NOT EXISTS idx_model_predictions_fixture ON model_predictions (fixture_id, market_key);
-
-CREATE TABLE IF NOT EXISTS value_bets (
-    id                    BIGSERIAL PRIMARY KEY,
-    model_prediction_id   BIGINT REFERENCES model_predictions(id),
-    odds_snapshot_id      BIGINT REFERENCES odds_snapshots(id),
-    bookmaker_id          INT REFERENCES bookmakers(id),
-    implied_probability   NUMERIC(6,5) NOT NULL,
-    edge                  NUMERIC(7,5) NOT NULL,
-    expected_value        NUMERIC(7,5) NOT NULL,
-    opportunity_score     NUMERIC(7,5) NOT NULL,
-    created_at            TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- migração idempotente: mesma lógica acima, para a tabela que nunca recebeu dados.
-DO $$
-BEGIN
-    IF EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_name = 'value_bets' AND column_name = 'rank_score'
-    ) THEN
-        ALTER TABLE value_bets RENAME COLUMN rank_score TO opportunity_score;
-    END IF;
-END $$;
-
-CREATE INDEX IF NOT EXISTS idx_value_bets_rank ON value_bets (opportunity_score DESC);
 
 -- ==================== backtest ====================
 
