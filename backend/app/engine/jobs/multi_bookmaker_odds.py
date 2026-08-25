@@ -11,13 +11,20 @@ sendo a fonte principal, essa aqui só soma bookmaker quando dá.
 
 Reaproveita o id 8 (Bet365) já usado pela captura via API-Football — é literalmente a
 mesma casa, só chegando por uma fonte diferente; Superbet ganha um id sintético novo
-(9001) porque nunca existiu no espaço de bookmaker da API-Football."""
+(9001) porque nunca existiu no espaço de bookmaker da API-Football.
+
+Casamento de fixture <-> evento e o fetch em lote (até 10 jogos/chamada) são
+específicos de como esta fonte funciona — a normalização em si (nome de mercado bruto
+-> `NormalizedOddsMarket`) e o storage vêm de `providers.odds_api_io_odds` e
+`providers.odds_storage`, compartilhados com qualquer futura fonte de odd."""
 import re
 import unicodedata
 
 from app.core import config, db
 from app.engine.integrations import odds_api_io
 from app.engine.models.players import ANYTIME_SCORER_BET_TYPE_ID, ANYTIME_SCORER_BET_TYPE_NAME
+from app.engine.providers import odds_api_io_odds
+from app.engine.providers.odds_storage import store_markets
 
 BOOKMAKER_IDS = {"Bet365": 8, "Superbet": 9001}
 BOOKMAKERS = list(BOOKMAKER_IDS)
@@ -31,10 +38,6 @@ LEAGUE_SLUGS = {
     135: "italy-serie-a",
     61: "france-ligue-1",
 }
-
-GOAL_LINES = {0.5, 1.5, 2.5, 3.5, 4.5}
-CORNER_LINES = {6.5, 7.5, 8.5, 9.5, 10.5}
-CARD_LINES = {1.5, 2.5, 3.5, 4.5, 5.5}
 
 # prefixo/sufixo de organização e estado que a odds-api.io usa e a API-Football não
 # (ex.: "SE Palmeiras SP" vs nosso "Palmeiras") — removidos só pra comparação, nunca
@@ -90,74 +93,11 @@ def _match_fixtures_to_events(fixtures: list[dict], events: list[dict]) -> dict[
     return matched
 
 
-def _store_bookmaker(cur, name: str):
-    cur.execute(
-        "INSERT INTO bookmakers (id, name) VALUES (%s, %s) ON CONFLICT (id) DO NOTHING",
-        (BOOKMAKER_IDS[name], name),
-    )
-
-
 def _ensure_player_bet_type(cur):
     cur.execute(
         "INSERT INTO bet_types (id, name) VALUES (%s, %s) ON CONFLICT (id) DO NOTHING",
         (ANYTIME_SCORER_BET_TYPE_ID, ANYTIME_SCORER_BET_TYPE_NAME),
     )
-
-
-def _insert_snapshot(cur, fixture_id: int, bookmaker_name: str, bet_type_id: int) -> int:
-    cur.execute(
-        """INSERT INTO odds_snapshots (fixture_id, bookmaker_id, bet_type_id, source)
-           VALUES (%s, %s, %s, %s) RETURNING id""",
-        (fixture_id, BOOKMAKER_IDS[bookmaker_name], bet_type_id, odds_api_io.SOURCE),
-    )
-    return cur.fetchone()[0]
-
-
-def _insert_value(cur, snapshot_id: int, label: str, odd: float):
-    cur.execute("INSERT INTO odds_values (snapshot_id, label, odd) VALUES (%s, %s, %s)", (snapshot_id, label, odd))
-
-
-def _store_markets(cur, fixture_id: int, bookmaker_name: str, markets: list[dict]) -> int:
-    saved = 0
-    for market in markets:
-        name = market["name"]
-        rows = market["odds"]
-        if not rows:
-            continue
-
-        if name == "ML" and len(rows) == 1:
-            row = rows[0]
-            snap = _insert_snapshot(cur, fixture_id, bookmaker_name, 1)
-            _insert_value(cur, snap, "Home", float(row["home"]))
-            _insert_value(cur, snap, "Draw", float(row["draw"]))
-            _insert_value(cur, snap, "Away", float(row["away"]))
-            saved += 1
-
-        elif name == "Both Teams To Score" and len(rows) == 1:
-            row = rows[0]
-            snap = _insert_snapshot(cur, fixture_id, bookmaker_name, 8)
-            _insert_value(cur, snap, "Yes", float(row["yes"]))
-            _insert_value(cur, snap, "No", float(row["no"]))
-            saved += 1
-
-        elif name == "Anytime Goalscorer" and rows:
-            snap = _insert_snapshot(cur, fixture_id, bookmaker_name, ANYTIME_SCORER_BET_TYPE_ID)
-            for row in rows:
-                _insert_value(cur, snap, row["label"], float(row["over"]))
-            saved += 1
-
-        elif name in ("Totals", "Corners Totals", "Bookings Totals"):
-            bet_type_id, valid_lines = {
-                "Totals": (5, GOAL_LINES), "Corners Totals": (45, CORNER_LINES), "Bookings Totals": (80, CARD_LINES),
-            }[name]
-            for row in rows:
-                if row["hdp"] not in valid_lines:
-                    continue
-                snap = _insert_snapshot(cur, fixture_id, bookmaker_name, bet_type_id)
-                _insert_value(cur, snap, f"Over {row['hdp']}", float(row["over"]))
-                _insert_value(cur, snap, f"Under {row['hdp']}", float(row["under"]))
-                saved += 1
-    return saved
 
 
 def capture_multi_bookmaker_odds() -> dict:
@@ -197,17 +137,18 @@ def capture_multi_bookmaker_odds() -> dict:
             conn = db.get_connection()
             try:
                 with conn.cursor() as cur:
-                    for bm in BOOKMAKERS:
-                        _store_bookmaker(cur, bm)
                     _ensure_player_bet_type(cur)
                     for event in results:
                         fixture_id = fixture_ids_by_event.get(event["id"])
                         if fixture_id is None:
                             continue
-                        for bookmaker_name, markets in event.get("bookmakers", {}).items():
+                        for bookmaker_name, raw_markets in event.get("bookmakers", {}).items():
                             if bookmaker_name not in BOOKMAKER_IDS:
                                 continue  # "Bet365 (no latency)" e variantes — só a casa exata
-                            total_saved += _store_markets(cur, fixture_id, bookmaker_name, markets)
+                            markets = odds_api_io_odds.parse_bookmaker_markets(
+                                BOOKMAKER_IDS[bookmaker_name], bookmaker_name, raw_markets,
+                            )
+                            total_saved += store_markets(cur, fixture_id, markets)
                 conn.commit()
             finally:
                 conn.close()
