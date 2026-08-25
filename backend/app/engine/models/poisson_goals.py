@@ -11,6 +11,10 @@ from scipy.stats import poisson
 
 from app.core import db
 
+# fonte única de verdade pra versão do modelo — `backtest.py` e qualquer previsão
+# persistida (prediction_snapshots.model_version) leem daqui, nunca hardcoded em 2 lugares
+MODEL_VERSION = "poisson-maher-v1"
+
 MAX_GOALS = 9  # teto da matriz de placar; probabilidade acima disso é desprezível
 
 GOAL_LINES = [0.5, 1.5, 2.5, 3.5, 4.5]

@@ -29,6 +29,7 @@ class OpportunityOut(BaseModel):
     confidence: str
     data_quality: int
     opportunity_score: float | None = None
+    model_version: str
 
 
 class MarketFamilyOut(BaseModel):

@@ -85,6 +85,7 @@ class MarketOpportunity:
     confidence: str          # rótulo qualitativo ('alta'/'média'/'baixa') — calibração do modelo, não certeza do resultado
     data_quality: int        # 0-100 — quanto dado real sustenta esta estimativa (amostra + odd disponível)
     opportunity_score: float | None  # ranking de valor; None quando não há odd para comparar
+    model_version: str       # qual versão do modelo gerou esta probabilidade — ver engine.models.*.MODEL_VERSION
 
 
 def implied_probability(odd: float) -> float:
@@ -295,6 +296,7 @@ def odds_capture_window(fixture_id: int, cutoff) -> tuple[object | None, object 
 
 def build_opportunities(
     odds_lookup: dict[tuple[int, str], tuple[float, str]], prediction, min_matches_for_market: int,
+    model_version: str,
 ) -> list[MarketOpportunity]:
     """Puro — sem I/O. `odds_lookup` vem de `fetch_latest_odds`, buscado uma vez por
     partida pelo chamador (ver analysis_service._compute_market_families) e reutilizado
@@ -335,6 +337,7 @@ def build_opportunities(
                 confidence=confidence,
                 data_quality=quality,
                 opportunity_score=score,
+                model_version=model_version,
             )
         )
 

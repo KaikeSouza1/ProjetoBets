@@ -12,7 +12,7 @@ from dataclasses import dataclass
 
 from app.core import db
 from app.engine.backtest.metrics import brier_score_multiclass
-from app.engine.models.poisson_goals import compute_strengths_from_matches, predict_fixture
+from app.engine.models.poisson_goals import MODEL_VERSION, compute_strengths_from_matches, predict_fixture
 
 MARKETS_TO_SCORE = ["home_win", "draw", "away_win", "btts_yes", "over_2_5"]
 
@@ -63,9 +63,10 @@ def _fetch_ordered_matches(league_id: int) -> tuple[str, list[tuple]]:
 def _get_or_create_model_version(cur) -> int:
     cur.execute(
         """INSERT INTO model_versions (market_family, version, description)
-           VALUES ('gols', 'poisson-maher-v1', 'Poisson casa/fora com força ofensiva/defensiva (Maher, 1982)')
+           VALUES ('gols', %s, 'Poisson casa/fora com força ofensiva/defensiva (Maher, 1982)')
            ON CONFLICT (market_family, version) DO UPDATE SET description = EXCLUDED.description
            RETURNING id""",
+        (MODEL_VERSION,),
     )
     return cur.fetchone()[0]
 

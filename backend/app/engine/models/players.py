@@ -10,6 +10,8 @@ from dataclasses import dataclass
 
 from app.core import db
 
+MODEL_VERSION = "player-rate-per90-v1"
+
 MIN_APPEARANCES = 2  # abaixo disso não há amostra suficiente para uma taxa por jogo
 
 # bet_type_id sintético — API-Football não tem "marcar em qualquer momento" no espaço de

@@ -20,6 +20,7 @@ class _FakeOpportunity:
     confidence: str
     data_quality: int
     opportunity_score: float | None
+    model_version: str = "test-v1"
 
 
 def _cleanup(ids: list[int]):

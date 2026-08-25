@@ -32,12 +32,12 @@ def record_snapshot(
                     """INSERT INTO prediction_snapshots (
                            fixture_id, fd_match_id, market_key, market_label, model_probability,
                            bookmaker_name, odd, implied_probability, edge, confidence, data_quality,
-                           opportunity_score, score_version, source
-                       ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                           opportunity_score, score_version, source, model_version
+                       ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
                     (
                         fixture_id, fd_match_id, o.market_key, o.label, o.probability,
                         o.bookmaker_name, o.odd, o.implied_probability, o.edge, o.confidence, o.data_quality,
-                        o.opportunity_score, OPPORTUNITY_SCORE_VERSION, source,
+                        o.opportunity_score, OPPORTUNITY_SCORE_VERSION, source, o.model_version,
                     ),
                 )
                 saved += 1

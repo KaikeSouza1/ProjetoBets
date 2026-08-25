@@ -11,6 +11,8 @@ from scipy.stats import poisson
 
 from app.core import db
 
+MODEL_VERSION = "poisson-corners-v1"
+
 MAX_CORNERS = 20
 CORNER_LINES = [6.5, 7.5, 8.5, 9.5, 10.5]
 

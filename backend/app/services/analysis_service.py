@@ -374,7 +374,7 @@ def _compute_market_families(league_id: int, home_team_id: int, away_team_id: in
             model = _league_model(family, league_id)
             prediction = module.predict_fixture(model, home_team_id, away_team_id)
             min_matches = min(prediction.n_matches_home_team, prediction.n_matches_away_team)
-            opportunities = build_opportunities(odds_lookup, prediction, min_matches)
+            opportunities = build_opportunities(odds_lookup, prediction, min_matches, module.MODEL_VERSION)
             families[family] = {"prediction": prediction, "opportunities": opportunities, "error": None}
         except ValueError as exc:
             families[family] = {"prediction": None, "opportunities": [], "error": str(exc)}

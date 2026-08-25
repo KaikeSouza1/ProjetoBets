@@ -20,7 +20,7 @@ from datetime import timedelta
 from app.core import db
 from app.engine.backtest.backtest import actual_outcomes_from_score
 from app.engine.backtest.metrics import GradedBet, grade_bet
-from app.engine.models.poisson_goals import compute_strengths_from_matches, predict_fixture
+from app.engine.models.poisson_goals import MODEL_VERSION, compute_strengths_from_matches, predict_fixture
 from app.engine.valuebet import valuebet
 
 # só gols tem walk-forward + escalação de força implementados por data de corte. Escanteios
@@ -134,7 +134,7 @@ def evaluate_historical_bets(league_id: int | None = None) -> list[EvaluatedBet]
 
         min_matches = min(prediction.n_matches_home_team, prediction.n_matches_away_team)
         odds_at_prediction_time = valuebet.fetch_odds_before(fixture["fixture_id"], prediction_time + _EPSILON)
-        opportunities = valuebet.build_opportunities(odds_at_prediction_time, prediction, min_matches)
+        opportunities = valuebet.build_opportunities(odds_at_prediction_time, prediction, min_matches, MODEL_VERSION)
 
         odds_at_closing = valuebet.fetch_odds_before(fixture["fixture_id"], fixture["date"]) if closing_time else {}
         actuals = actual_outcomes_from_score(fixture["home_goals"], fixture["away_goals"])

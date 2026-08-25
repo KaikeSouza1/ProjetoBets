@@ -420,6 +420,10 @@ CREATE INDEX IF NOT EXISTS idx_prediction_snapshots_fd_match ON prediction_snaps
 -- tabela já existia sem esta coluna em ambientes que rodaram o schema antes desta versão
 ALTER TABLE prediction_snapshots ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'MANUAL_VIEW';
 CREATE INDEX IF NOT EXISTS idx_prediction_snapshots_source ON prediction_snapshots (source);
+-- qual módulo/versão de modelo gerou esta probabilidade (ver engine.models.*.MODEL_VERSION)
+-- — sem isso, reprocessar o modelo não tinha como provar que uma previsão antiga usava a
+-- fórmula de então e não a de hoje. NULL só em linha gravada antes desta coluna existir.
+ALTER TABLE prediction_snapshots ADD COLUMN IF NOT EXISTS model_version TEXT;
 
 -- ==================== landing / captação (produto WhatsApp) ====================
 

@@ -102,7 +102,7 @@ def _fake_prediction(markets: dict) -> SimpleNamespace:
 
 def test_build_opportunities_without_odds_has_no_score_but_has_probability():
     prediction = _fake_prediction({"btts_yes": 0.61, "over_2_5": 0.55})
-    opportunities = build_opportunities({}, prediction, min_matches_for_market=20)
+    opportunities = build_opportunities({}, prediction, min_matches_for_market=20, model_version="test-v1")
     assert len(opportunities) == 2
     for o in opportunities:
         assert o.odd is None
@@ -115,7 +115,7 @@ def test_build_opportunities_with_odds_computes_edge_and_score():
     prediction = _fake_prediction({"btts_yes": 0.61})
     # (8, "Yes") é a chave de odds pro mercado btts_yes, ver GOALS_ODDS_MAP
     odds_lookup = {(8, "Yes"): (1.82, "Bet365")}
-    opportunities = build_opportunities(odds_lookup, prediction, min_matches_for_market=20)
+    opportunities = build_opportunities(odds_lookup, prediction, min_matches_for_market=20, model_version="test-v1")
     assert len(opportunities) == 1
     o = opportunities[0]
     assert o.odd == 1.82
@@ -123,12 +123,13 @@ def test_build_opportunities_with_odds_computes_edge_and_score():
     assert math.isclose(o.implied_probability, 1 / 1.82, rel_tol=1e-9)
     assert math.isclose(o.edge, 0.61 - 1 / 1.82, rel_tol=1e-9)
     assert o.opportunity_score is not None
+    assert o.model_version == "test-v1"  # toda previsão persistida precisa saber qual modelo/versão a gerou
 
 
 def test_build_opportunities_never_invents_an_odd():
     # mercado sem chave nenhuma no odds_lookup (ex.: escanteios sem odd capturada)
     prediction = _fake_prediction({"corner_over_9_5": 0.5})
-    opportunities = build_opportunities({}, prediction, min_matches_for_market=3)
+    opportunities = build_opportunities({}, prediction, min_matches_for_market=3, model_version="test-v1")
     assert opportunities[0].odd is None
     assert opportunities[0].opportunity_score is None
 
@@ -139,5 +140,5 @@ def test_build_opportunities_probability_is_native_float_not_numpy():
     # snapshots, ver valuebet.build_opportunities)
     import numpy as np
     prediction = _fake_prediction({"over_2_5": np.float64(0.55)})
-    opportunities = build_opportunities({}, prediction, min_matches_for_market=10)
+    opportunities = build_opportunities({}, prediction, min_matches_for_market=10, model_version="test-v1")
     assert type(opportunities[0].probability) is float
