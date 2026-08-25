@@ -16,11 +16,10 @@ mesma casa, só chegando por uma fonte diferente; Superbet ganha um id sintétic
 Casamento de fixture <-> evento e o fetch em lote (até 10 jogos/chamada) são
 específicos de como esta fonte funciona — a normalização em si (nome de mercado bruto
 -> `NormalizedOddsMarket`) e o storage vêm de `providers.odds_api_io_odds` e
-`providers.odds_storage`, compartilhados com qualquer futura fonte de odd."""
-import re
-import unicodedata
-
+`providers.odds_storage`, compartilhados com qualquer futura fonte de odd. O match de
+NOME de time usa `teammatch.py` (normalização central) — nunca uma cópia local."""
 from app.core import config, db
+from app.engine import teammatch
 from app.engine.integrations import odds_api_io
 from app.engine.models.players import ANYTIME_SCORER_BET_TYPE_ID, ANYTIME_SCORER_BET_TYPE_NAME
 from app.engine.providers import odds_api_io_odds
@@ -38,27 +37,6 @@ LEAGUE_SLUGS = {
     135: "italy-serie-a",
     61: "france-ligue-1",
 }
-
-# prefixo/sufixo de organização e estado que a odds-api.io usa e a API-Football não
-# (ex.: "SE Palmeiras SP" vs nosso "Palmeiras") — removidos só pra comparação, nunca
-# gravados em lugar nenhum
-_IGNORED_TOKENS = {
-    "fc", "ec", "cr", "ca", "se", "aa", "sc", "ac", "rb", "ge", "ar", "esporte", "clube", "de", "do",
-    "sp", "rj", "mg", "rs", "pr", "pe", "go", "df", "es", "pi", "al", "ma", "pa", "am", "rn", "pb", "to", "ba", "sc",
-}
-
-
-def _normalize(name: str) -> str:
-    ascii_name = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
-    tokens = [t for t in re.findall(r"[a-z0-9]+", ascii_name.lower()) if t not in _IGNORED_TOKENS]
-    return " ".join(tokens)
-
-
-def _names_match(a: str, b: str) -> bool:
-    na, nb = _normalize(a), _normalize(b)
-    if not na or not nb:
-        return False
-    return na == nb or na in nb or nb in na
 
 
 def _fixtures_awaiting_odds(league_id: int) -> list[dict]:
@@ -86,8 +64,12 @@ def _match_fixtures_to_events(fixtures: list[dict], events: list[dict]) -> dict[
     matched = {}
     pending_events = [e for e in events if e.get("status") != "settled"]
     for fixture in fixtures:
+        home_norm = teammatch.normalize(fixture["home_name"])
+        away_norm = teammatch.normalize(fixture["away_name"])
         for event in pending_events:
-            if _names_match(fixture["home_name"], event["home"]) and _names_match(fixture["away_name"], event["away"]):
+            if teammatch.names_match(home_norm, teammatch.normalize(event["home"])) and teammatch.names_match(
+                away_norm, teammatch.normalize(event["away"])
+            ):
                 matched[fixture["fixture_id"]] = event["id"]
                 break
     return matched

@@ -2,13 +2,14 @@
 originalmente não existia no banco real do projeto — ver relatório de auditoria) pra
 provar que o pipeline funciona quando o dado existir, e limpa tudo no final.
 
-Usa times reais (Grêmio=26, Bahia=30 na numeração API-Football) que têm histórico BSA
-de verdade — confirmado via `SELECT DISTINCT home_team_id FROM fd_matches WHERE
-competition_code='BSA'`, não hardcoded às cegas (a versão anterior usava os ids 12/24,
-que nunca foram times do Brasileirão — provavelmente clube europeu antigo na numeração
-global da API-Football; o teste nunca tinha rodado contra dado real até essa auditoria,
-por isso o bug não tinha sido pego). Data da partida fixada bem no futuro (2030) pra
-nunca colidir com o histórico real sincronizado, que sempre vai ficar no passado dela."""
+Usa times reais (Grêmio=26, Bahia=30 — id INTERNO da tabela `teams`, não da API-Football;
+ver `teammatch.py` pra normalização) que têm histórico BSA de verdade, confirmado via
+`SELECT DISTINCT home_team_id FROM fd_matches WHERE competition_code='BSA'`, não
+hardcoded às cegas (a versão anterior usava os ids 12/24 — que são id interno de
+Liverpool e PSG, confirmado por consulta real, não times do Brasileirão de jeito
+nenhum; o teste nunca tinha rodado contra dado real até essa auditoria, por isso o bug
+não tinha sido pego). Data da partida fixada bem no futuro (2030) pra nunca colidir com
+o histórico real sincronizado, que sempre vai ficar no passado dela."""
 from datetime import datetime, timedelta, timezone
 
 import pytest

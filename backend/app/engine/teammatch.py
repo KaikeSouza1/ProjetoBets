@@ -1,15 +1,24 @@
-"""Resolve o mesmo time entre API-Football e football-data.org, que usam nomes/IDs diferentes.
+"""Normalização central de nome de time — usada por QUALQUER fonte que precise casar
+time por nome (API-Football, football-data.org, odds-api.io). Antes desta consolidação,
+`multi_bookmaker_odds.py` mantinha sua PRÓPRIA cópia de lista de ruído + match (achado
+na auditoria de 25/08/2026) — já tinha divergido da lista daqui (faltava sufixo de
+estado como "SP"/"RJ" aqui, faltava "athletic"/"deportivo" lá), risco real de um dia
+combinar errado dependendo de qual cópia rodasse. Uma lista, um critério de match, só.
 
-Ex.: API-Football diz "Palmeiras"; football-data.org diz "SE Palmeiras".
-Qualquer fonte pode "descobrir" um time primeiro — o merge por nome funciona nos dois sentidos.
+Ex.: API-Football diz "Palmeiras"; football-data.org diz "SE Palmeiras"; odds-api.io
+diz "SE Palmeiras SP". Qualquer fonte pode "descobrir" um time primeiro — o merge por
+nome funciona nos dois sentidos.
 """
 import re
 import unicodedata
 
 _NOISE_TOKENS = {
-    "fc", "sc", "ec", "se", "ca", "cr", "ac", "af", "cd", "afc", "cfc",
-    "fbc", "fbpa", "esporte", "clube", "futebol", "clube de regatas",
+    # prefixo/sufixo de organização (várias fontes, várias línguas)
+    "fc", "sc", "ec", "se", "ca", "cr", "ac", "af", "cd", "afc", "cfc", "aa", "rb", "ge", "ar",
+    "fbc", "fbpa", "esporte", "esportes", "clube", "clube de regatas", "futebol", "de", "do",
     "atletico", "athletic", "association", "club", "deportivo",
+    # sufixo de estado brasileiro (odds-api.io usa, ex.: "SE Palmeiras SP")
+    "sp", "rj", "mg", "rs", "pr", "pe", "go", "df", "es", "pi", "al", "ma", "pa", "am", "rn", "pb", "to", "ba", "sc",
 }
 
 
@@ -21,7 +30,9 @@ def normalize(name: str) -> str:
     return " ".join(tokens).strip()
 
 
-def _names_match(a: str, b: str) -> bool:
+def names_match(a: str, b: str) -> bool:
+    """Espera nome JÁ normalizado nos dois lados (chame `normalize` antes) — evita
+    normalizar 2x sem querer e mascarar um bug de token."""
     if not a or not b:
         return False
     if a == b:
@@ -37,7 +48,7 @@ def find_matching_team_id(cur, name: str, id_column: str) -> int | None:
         return None
     cur.execute(f"SELECT id, name FROM teams WHERE {id_column} IS NULL")
     for team_id, existing_name in cur.fetchall():
-        if _names_match(normalize(existing_name), target):
+        if names_match(normalize(existing_name), target):
             return team_id
     return None
 
