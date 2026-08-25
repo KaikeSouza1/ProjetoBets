@@ -79,12 +79,12 @@ def get_snapshot_history(fd_match_id: int, market_key: str) -> list[dict]:
 
 
 def capture_snapshots_for_upcoming_matches(days_ahead: int = 7) -> dict:
-    """Arquitetura pro histórico automático — o que falta pra `prediction_snapshots`
-    deixar de ser 'só quando alguém abriu a análise' e virar uma amostragem periódica
-    de verdade. NÃO está registrada em nenhum scheduler ainda (ver
-    `backend/scripts/capture_snapshots.py` pra rodar manualmente) — decisão de
-    cadência/custo é operacional, não de arquitetura, e ligar isso automaticamente
-    multiplica o volume de escrita por N execuções/dia × M partidas na janela.
+    """Amostragem periódica de `prediction_snapshots` — deixa de ser 'só quando alguém
+    abriu a análise'. Registrada no scheduler (`scripts/run_scheduler.py`, a cada
+    `SNAPSHOT_INTERVAL_HOURS`) desde antes desta nota; comentário anterior dizia o
+    oposto ("não está registrada ainda") e ficou desatualizado — achado revisando o
+    crash de 25/08/2026, que começava bem aqui (ver match_service._resolve_snapshot_fd_match_id).
+    Não chama nenhuma API externa — só lê o que já está no banco e escreve nele.
 
     Reaproveita `match_service.get_analysis` inteiro, só troca o `source` do snapshot —
     então o que é gravado aqui é EXATAMENTE o que a API mostraria se alguém abrisse a

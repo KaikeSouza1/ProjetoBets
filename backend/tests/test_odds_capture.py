@@ -17,6 +17,7 @@ IDS = {
     "outside_window": 999999102,
     "in_window_recent_capture": 999999103,
     "already_finished": 999999104,
+    "recent_failed_attempt": 999999105,
 }
 
 
@@ -51,6 +52,19 @@ def synthetic_fixtures():
                    VALUES (%s, %s, %s, 'FT', %s, %s)""",
                 (IDS["already_finished"], LEAGUE_ID, now - timedelta(hours=2), HOME_TEAM_ID, AWAY_TEAM_ID),
             )
+            # sem odds_snapshots nenhuma (a captura falhou), mas houve uma TENTATIVA
+            # recente logada em raw_api_payloads — achado real: sem essa 2ª camada de
+            # cooldown, essa fixture seria retentada em todo restart do scheduler
+            cur.execute(
+                """INSERT INTO fixtures (id, league_id, date, status, home_team_id, away_team_id)
+                   VALUES (%s, %s, %s, 'NS', %s, %s)""",
+                (IDS["recent_failed_attempt"], LEAGUE_ID, now + timedelta(hours=8), HOME_TEAM_ID, AWAY_TEAM_ID),
+            )
+            cur.execute(
+                """INSERT INTO raw_api_payloads (source, endpoint, params, payload, fetched_at)
+                   VALUES ('api-football', 'odds', %s, '{}', %s)""",
+                ('{"fixture": %d}' % IDS["recent_failed_attempt"], now - timedelta(minutes=5)),
+            )
         conn.commit()
     finally:
         conn.close()
@@ -61,6 +75,10 @@ def synthetic_fixtures():
     try:
         with conn.cursor() as cur:
             cur.execute("DELETE FROM odds_snapshots WHERE fixture_id = ANY(%s)", (list(IDS.values()),))
+            cur.execute(
+                "DELETE FROM raw_api_payloads WHERE source='api-football' AND endpoint='odds' AND params->>'fixture' = %s",
+                (str(IDS["recent_failed_attempt"]),),
+            )
             cur.execute("DELETE FROM fixtures WHERE id = ANY(%s)", (list(IDS.values()),))
         conn.commit()
     finally:
@@ -74,6 +92,7 @@ def test_selects_only_fixtures_inside_capture_window_without_recent_odds(synthet
     assert IDS["outside_window"] not in selected  # fora da janela hoje±1 dia da API-Football
     assert IDS["in_window_recent_capture"] not in selected  # já capturado há 30min, dentro do cooldown de 3h
     assert IDS["already_finished"] not in selected  # não é mais NS/TBD
+    assert IDS["recent_failed_attempt"] not in selected  # tentativa (com ou sem sucesso) há 5min, dentro do RETRY_COOLDOWN_MINUTES
 
 
 def test_prioritizes_fixtures_never_captured_over_fixtures_with_old_capture(synthetic_fixtures):

@@ -19,6 +19,18 @@ DEFAULT_BOOKMAKER_ID = api_football_odds.DEFAULT_BOOKMAKER_ID
 # pro achado completo (auditoria 25/08/2026, /api/status mostrou >50% de erro 24h)
 API_FOOTBALL_PACING_SECONDS = 6.5
 
+# achado real na mesma auditoria: `_select_fixtures_for_capture` só evitava recapturar
+# odd que JÁ TINHA sido capturada com sucesso (`odds_snapshots`) — uma fixture sem odd
+# NENHUMA (a maioria durante uma falha de cota) nunca tinha proteção nenhuma contra
+# retry repetido, e cada restart do scheduler tentava de novo na hora. O crash loop
+# investigado nesta auditoria (65 restarts num dia) teria multiplicado isso por 65 se
+# não tivesse sido corrigido primeiro — esta cota é a segunda camada de proteção,
+# pro caso de outro crash loop diferente aparecer no futuro. Mais curto que o cooldown
+# de recaptura normal (3h, `ODDS_CAPTURE_COOLDOWN_HOURS`) de propósito: não deve
+# atrapalhar retry legítimo dentro do ciclo normal de 4h, só absorver restart repetido
+# em sequência curta.
+RETRY_COOLDOWN_MINUTES = 30
+
 
 def fetch_and_store_odds(fixture_id: int, bookmaker_id: int = DEFAULT_BOOKMAKER_ID) -> int:
     markets = api_football_odds.fetch_odds(fixture_id, bookmaker_id)
@@ -56,9 +68,15 @@ def _select_fixtures_for_capture(max_fixtures: int, cooldown_hours: int) -> list
                          SELECT 1 FROM odds_snapshots os
                          WHERE os.fixture_id = f.id AND os.captured_at > now() - (%s || ' hours')::interval
                      )
+                     AND NOT EXISTS (
+                         SELECT 1 FROM raw_api_payloads rap
+                         WHERE rap.source = 'api-football' AND rap.endpoint = 'odds'
+                           AND rap.params->>'fixture' = f.id::text
+                           AND rap.fetched_at > now() - (%s || ' minutes')::interval
+                     )
                    ORDER BY has_capture ASC, f.date ASC
                    LIMIT %s""",
-                (cooldown_hours, max_fixtures),
+                (cooldown_hours, RETRY_COOLDOWN_MINUTES, max_fixtures),
             )
             return [r[0] for r in cur.fetchall()]
     finally:

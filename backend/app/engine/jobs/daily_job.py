@@ -31,17 +31,22 @@ def _target_league_ids() -> list[int]:
         conn.close()
 
 
-def _yesterday_finished_target_fixtures() -> list[int]:
+def _yesterday_missing_statistics() -> list[int]:
+    yesterday = datetime.date.today() - datetime.timedelta(days=1)
     conn = db.get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute(
-                """SELECT f.id FROM fixtures f
-                   WHERE f.status = 'FT' AND f.date::date = %s
-                     AND NOT EXISTS (SELECT 1 FROM fixture_statistics fs WHERE fs.fixture_id = f.id)""",
-                (datetime.date.today() - datetime.timedelta(days=1),),
-            )
-            return [r[0] for r in cur.fetchall()]
+            return fixture_detail.fixtures_with_incomplete_statistics(cur, since=yesterday, until=yesterday)
+    finally:
+        conn.close()
+
+
+def _yesterday_missing_player_stats() -> list[int]:
+    yesterday = datetime.date.today() - datetime.timedelta(days=1)
+    conn = db.get_connection()
+    try:
+        with conn.cursor() as cur:
+            return fixture_detail.fixtures_missing_player_stats(cur, since=yesterday, until=yesterday)
     finally:
         conn.close()
 
@@ -85,17 +90,32 @@ def run_daily_sync():
             print(f"[daily_job] falhou sync_league_results liga {league_id}: {exc}")
         time.sleep(FOOTBALL_DATA_PACING_SECONDS)
 
-    # backfill lento: estatística/jogador/lesão das partidas de ontem que já terminaram e
-    # ainda não têm detalhe salvo — é assim que os modelos de escanteio/cartão/jogador crescem.
-    # Pausa entre CADA chamada (não só entre partidas) — são 3 chamadas por partida, e o
-    # limite de 10/min da API-Football conta a chamada, não a partida.
-    for fixture_id in _yesterday_finished_target_fixtures():
-        for fetch in (fixture_detail.fetch_statistics, fixture_detail.fetch_player_stats, fixture_detail.fetch_injuries):
-            try:
-                fetch(fixture_id)
-            except Exception as exc:
-                print(f"[daily_job] falhou {fetch.__name__} fixture {fixture_id}: {exc}")
-            time.sleep(API_FOOTBALL_PACING_SECONDS)
+    # ingestão diária (não confundir com backfill histórico — ver scripts/backfill_statistics.py
+    # e scripts/backfill_api_football_league.py, que cobrem o passivo de partidas mais
+    # antigas sob demanda, respeitando cota, sem entrar nesse loop automático): só as
+    # partidas de ONTEM, e só o que os modelos de gols/escanteio/cartão/jogador
+    # realmente usam pra treinar — estatística (escanteio/cartão) e estatística de
+    # jogador (histórico agregado em engine/models/players.py).
+    #
+    # `injuries` foi removido daqui (achado real na auditoria de cota, 25/08/2026):
+    # a única coisa que lê `injuries` é a exclusão de jogador machucado numa previsão
+    # de jogo FUTURO (players.py, `_unavailable_player_ids`) — buscar lesão de um jogo
+    # de ONTEM que já acabou não serve pra nada, e não existe hoje nenhum outro lugar
+    # que busque `injuries` pra jogo futuro (não tem enriquecimento pré-jogo automático
+    # ainda) — ou seja, essa chamada nunca teve efeito prático nenhum, só gastava cota.
+    for fixture_id in _yesterday_missing_statistics():
+        try:
+            fixture_detail.fetch_statistics(fixture_id)
+        except Exception as exc:
+            print(f"[daily_job] falhou fetch_statistics fixture {fixture_id}: {exc}")
+        time.sleep(API_FOOTBALL_PACING_SECONDS)
+
+    for fixture_id in _yesterday_missing_player_stats():
+        try:
+            fixture_detail.fetch_player_stats(fixture_id)
+        except Exception as exc:
+            print(f"[daily_job] falhou fetch_player_stats fixture {fixture_id}: {exc}")
+        time.sleep(API_FOOTBALL_PACING_SECONDS)
 
     # fecha o ciclo de auditoria: previsão que já tem resultado real disponível vira
     # WIN/LOSS agora (só mercados de gols — ver result_tracking.py)

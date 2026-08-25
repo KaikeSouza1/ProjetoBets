@@ -10,6 +10,75 @@ def _team_internal_id(cur, api_football_team_id: int, name_hint: str) -> int:
     return teammatch.upsert_team(cur, "api-football", api_football_team_id, name_hint)
 
 
+# `fetch_statistics` grava exatamente os `stat_type` que a API devolver — nada garante
+# que os dois times sempre tragam 'Corner Kicks'/'Yellow Cards'/'Red Cards' (ligas
+# menores às vezes não reportam algum stat). Achado real na auditoria de cota
+# (25/08/2026): "tem QUALQUER linha em fixture_statistics pra essa fixture" (o guard
+# antigo, `NOT EXISTS` sobre o fixture_id só) não é o mesmo que "tem o que
+# corners.py/cards.py precisam" — uma fixture com stat parcial passaria como "já
+# processada" e nunca mais seria retentada, mesmo sem o dado que os modelos realmente
+# usam. Esta é a única definição de "completo pros modelos" — os dois módulos que
+# consultam `fetch_statistics_completeness_gap` (job diário e backfill histórico)
+# nunca duplicam essa lógica."""
+_INCOMPLETE_STATS_SQL = """(
+    NOT EXISTS (SELECT 1 FROM fixture_statistics fs WHERE fs.fixture_id = f.id AND fs.team_id = f.home_team_id AND fs.stat_type = 'Corner Kicks')
+    OR NOT EXISTS (SELECT 1 FROM fixture_statistics fs WHERE fs.fixture_id = f.id AND fs.team_id = f.away_team_id AND fs.stat_type = 'Corner Kicks')
+    OR NOT EXISTS (SELECT 1 FROM fixture_statistics fs WHERE fs.fixture_id = f.id AND fs.team_id = f.home_team_id AND fs.stat_type IN ('Yellow Cards', 'Red Cards'))
+    OR NOT EXISTS (SELECT 1 FROM fixture_statistics fs WHERE fs.fixture_id = f.id AND fs.team_id = f.away_team_id AND fs.stat_type IN ('Yellow Cards', 'Red Cards'))
+)"""
+
+
+def fixtures_with_incomplete_statistics(
+    cur, league_ids: list[int] | None = None, since: object = None, until: object = None,
+) -> list[int]:
+    """Toda fixture 'FT' que ainda não tem Corner Kicks + Yellow/Red Cards pros dois
+    times — nunca assume que 'tem linha em fixture_statistics' é o mesmo que 'tem o
+    que os modelos usam' (ver nota acima). Ordenado por data decrescente: se não
+    couber tudo na cota do dia, prioriza a partida mais recente.
+
+    `since`/`until` sozinhos ou juntos escopam por data — usado pra separar a ingestão
+    diária (só ontem, `since=until=ontem`) do backfill histórico (sem limite, ou uma
+    janela ampla) sem duplicar a definição de 'incompleto' em dois lugares."""
+    query = f"SELECT f.id FROM fixtures f WHERE f.status = 'FT' AND {_INCOMPLETE_STATS_SQL}"
+    params: list = []
+    if league_ids:
+        query += " AND f.league_id = ANY(%s)"
+        params.append(league_ids)
+    if since:
+        query += " AND f.date::date >= %s"
+        params.append(since)
+    if until:
+        query += " AND f.date::date <= %s"
+        params.append(until)
+    query += " ORDER BY f.date DESC"
+    cur.execute(query, params)
+    return [r[0] for r in cur.fetchall()]
+
+
+def fixtures_missing_player_stats(
+    cur, league_ids: list[int] | None = None, since: object = None, until: object = None,
+) -> list[int]:
+    """Toda fixture 'FT' sem nenhuma linha em `fixture_player_stats` ainda — usado pelo
+    modelo de jogador (`engine/models/players.py`), que agrega histórico por jogador
+    através de MUITAS fixtures, então precisa continuar crescendo via backfill (não é
+    só enriquecimento de jogo futuro)."""
+    query = """SELECT f.id FROM fixtures f WHERE f.status = 'FT'
+               AND NOT EXISTS (SELECT 1 FROM fixture_player_stats fps WHERE fps.fixture_id = f.id)"""
+    params: list = []
+    if league_ids:
+        query += " AND f.league_id = ANY(%s)"
+        params.append(league_ids)
+    if since:
+        query += " AND f.date::date >= %s"
+        params.append(since)
+    if until:
+        query += " AND f.date::date <= %s"
+        params.append(until)
+    query += " ORDER BY f.date DESC"
+    cur.execute(query, params)
+    return [r[0] for r in cur.fetchall()]
+
+
 def fetch_statistics(fixture_id: int) -> int:
     results = api_football.get("fixtures/statistics", {"fixture": fixture_id})
     conn = db.get_connection()
