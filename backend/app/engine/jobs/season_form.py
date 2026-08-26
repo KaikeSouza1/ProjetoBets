@@ -6,6 +6,24 @@ from app.core import db
 from app.engine import teammatch
 from app.engine.integrations import football_data
 
+# achado real (26/08/2026): a própria football-data.org devolveu `"status":
+# "2026-08-26 19:00:00Z"` pra Real Madrid x Real Sociedad — o mesmo valor de
+# `utcDate`, não um status válido (confirmado no payload bruto arquivado; bug do lado
+# deles, 262 partidas afetadas no banco). Sem essa validação, `list_upcoming` (que
+# filtra `status IN ('SCHEDULED','TIMED','FINISHED')`) descartava a partida inteira em
+# silêncio — ela nunca aparecia como oportunidade, mesmo com modelo+odd prontos.
+_VALID_STATUSES = {"SCHEDULED", "TIMED", "IN_PLAY", "PAUSED", "FINISHED", "SUSPENDED", "POSTPONED", "CANCELLED", "AWARDED"}
+
+
+def _normalize_status(raw_status: str, score: dict) -> str:
+    """Nunca grava um status fora do conjunto conhecido — quando a API manda lixo,
+    infere pelo placar (tem os dois gols preenchidos = FINISHED, senão = SCHEDULED,
+    a única distinção que os consumidores de `fd_matches.status` realmente precisam)."""
+    if raw_status in _VALID_STATUSES:
+        return raw_status
+    has_score = score.get("home") is not None and score.get("away") is not None
+    return "FINISHED" if has_score else "SCHEDULED"
+
 
 def _league_fd_code(cur, league_id: int) -> str | None:
     cur.execute("SELECT football_data_code FROM leagues WHERE id = %s", (league_id,))
@@ -45,7 +63,7 @@ def sync_league_results(league_id: int, season: int | None = None) -> int:
                            status = EXCLUDED.status, home_goals = EXCLUDED.home_goals,
                            away_goals = EXCLUDED.away_goals, fetched_at = now()""",
                     (
-                        m["id"], code, season_year, m.get("matchday"), m["utcDate"], m["status"],
+                        m["id"], code, season_year, m.get("matchday"), m["utcDate"], _normalize_status(m["status"], score),
                         home_id, away_id, m["homeTeam"]["name"], m["awayTeam"]["name"],
                         score.get("home"), score.get("away"),
                     ),

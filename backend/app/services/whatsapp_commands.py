@@ -6,7 +6,9 @@ import datetime
 import re
 
 from app.core import db
-from app.services.opportunity_notifications import PLAN_LIMITS, eligible_opportunities, format_ticket_message
+from app.services.opportunity_notifications import (
+    PLAN_LIMITS, eligible_opportunities, find_multipla, format_ticket_message,
+)
 
 NO_OPPORTUNITY_MESSAGE = "Sem oportunidade com confiança suficiente pra hoje. Tenta de novo mais tarde."
 
@@ -39,12 +41,15 @@ def _lead_plan(phone: str) -> str:
         conn.close()
 
 
-def handle_command(from_phone: str, text: str, opportunities: list | None = None) -> str | None:
+def handle_command(
+    from_phone: str, text: str, opportunities: list | None = None, multipla: dict | None = None,
+) -> str | None:
     """None quando `text` não é um comando reconhecido — quem chama não deve responder
-    nada nesse caso (não vira eco de toda mensagem que o número recebe). `opportunities`
-    normalmente vem de `eligible_opportunities` (produção) — parâmetro existe pra teste
-    injetar oportunidades reais sem depender do dashboard completo (mesmo padrão de
-    `opportunity_notifications.enqueue_daily_opportunities`)."""
+    nada nesse caso (não vira eco de toda mensagem que o número recebe). `opportunities`/
+    `multipla` normalmente vêm de `eligible_opportunities`/`find_multipla` (produção) —
+    parâmetros existem pra teste injetar dado real sem depender do dashboard completo
+    (mesmo padrão de `opportunity_notifications.enqueue_daily_opportunities`). Só plano
+    'pro' recebe múltipla — grátis é só o palpite simples."""
     normalized = text.strip().lower()
     if normalized not in ("/odds", "odds"):
         return None
@@ -53,6 +58,9 @@ def handle_command(from_phone: str, text: str, opportunities: list | None = None
     limit = PLAN_LIMITS.get(plan, PLAN_LIMITS["gratis"])
     available = eligible_opportunities(datetime.date.today()) if opportunities is None else opportunities
     picks = available[:limit]
-    if not picks:
+    lead_multipla = None
+    if plan == "pro":
+        lead_multipla = find_multipla(available) if multipla is None else (multipla or None)
+    if not picks and not lead_multipla:
         return NO_OPPORTUNITY_MESSAGE
-    return format_ticket_message(picks)
+    return format_ticket_message(picks, lead_multipla)
