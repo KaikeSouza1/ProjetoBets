@@ -10,9 +10,11 @@ duplicada e mais fraca.
 
 Nunca consome a cota reservada pra operação normal (`reserve`): pára ANTES de chegar
 nesse piso, checando a cota real gasta hoje a cada tentativa (não um número pré-calculado
-uma vez só, que ficaria errado se outro job rodasse no meio). `DEFAULT_RESERVE=50`
-vem da auditoria de cota (25/08/2026): dia de operação pesada consome até ~48
-(fixtures 18 + odds até 30) — 50 dá uma margem pequena por cima disso.
+uma vez só, que ficaria errado se outro job rodasse no meio). `DEFAULT_RESERVE=20`
+(reduzido de 50 em 27/08/2026, a pedido — ainda sem usuário real dependendo da
+sincronização normal, só reserva o mínimo pra sync de fixtures do dia continuar
+funcionando pro próprio desenvolvimento/teste; reavaliar pra cima quando houver
+tráfego de verdade).
 
 Rodável manual (`scripts/backfill_statistics.py`) ou automático (1x/dia, não a cada
 ciclo de 4h — é catch-up lento, não dado que precisa ficar fresco; ver
@@ -25,7 +27,7 @@ from app.engine.jobs import fixture_detail
 
 PACING_SECONDS = 6.5
 DAILY_QUOTA = 100
-DEFAULT_RESERVE = 50
+DEFAULT_RESERVE = 20
 
 
 def _calls_used_today() -> int:
@@ -58,9 +60,22 @@ def _run_one_queue(kind: str, fixture_ids: list[int], fetch_fn, reserve: int) ->
         except api_football.ApiFootballError as exc:
             failed += 1
             print(f"[historical_backfill:{kind}] ({i}/{len(fixture_ids)}) falhou fixture {fixture_id}: {exc}")
-            if "request limit" in str(exc).lower():
+            error_text = str(exc).lower()
+            # achado real (27/08/2026): as duas mensagens de erro da API-Football
+            # contêm "request limit" — "reached the request limit FOR THE DAY" (cota
+            # diária, essa sim é motivo de parar) e "reached your PER-MINUTE request
+            # limit" (throttling passageiro, provavelmente concorrência com o sync
+            # normal do scheduler rodando ao mesmo tempo). Checar só "request limit"
+            # tratava as duas como a mesma coisa e abortava o backfill inteiro por um
+            # rate-limit de 1 minuto que se resolveria sozinho — 58 partidas ficaram de
+            # fora sem necessidade na primeira vez que isso aconteceu.
+            if "per-minute" in error_text:
+                print(f"[historical_backfill:{kind}] limite por minuto (passageiro) — esperando um pouco mais antes de continuar.")
+                time.sleep(PACING_SECONDS * 3)
+                continue
+            if "for the day" in error_text:
                 skipped_quota = len(fixture_ids) - i
-                print(f"[historical_backfill:{kind}] cota confirmada esgotada — parando, {skipped_quota} partida(s) ficaram de fora.")
+                print(f"[historical_backfill:{kind}] cota diária confirmada esgotada — parando, {skipped_quota} partida(s) ficaram de fora.")
                 break
         time.sleep(PACING_SECONDS)
     return ok, failed, skipped_quota
